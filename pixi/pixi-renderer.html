@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://pixijs.download/release/pixi.js"></script>
+    <style>
+        body, canvas {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+
+<script>
+    let app = new PIXI.Application({ width : 256, height: 256 });
+    document.body.appendChild(app.view);
+
+    function loadPlanet(data) {
+        const planetGeometry = new PIXI.Geometry();
+        for (const attribute of data.attributes) {
+            planetGeometry.addAttribute(attribute.id, attribute.buffer, attribute.size);
+        }
+        planetGeometry.addIndex(data.index);
+
+        const planetVertexShader = `
+                precision mediump float;
+
+                attribute vec3 aPosition;
+                attribute vec3 aColor;
+
+                varying vec3 vColor;
+
+                void main() {
+                    vColor = aColor;
+
+                    gl_Position = vec4(aPosition, 1.0);
+                }
+            `;
+        const planetFragmentShader = `
+                precision mediump float;
+
+                varying vec3 vColor;
+
+                void main() {
+                    gl_FragColor = vec4(vColor, 1.0);
+                }
+            `;
+        const planetProgram = new PIXI.Program(planetVertexShader, planetFragmentShader);
+
+        const shader = new PIXI.Shader(planetProgram, {});
+        const state = PIXI.State.for2d();
+        state.depthTest = true;
+        const mesh = new PIXI.Mesh(planetGeometry, shader, state);
+
+        app.stage.addChild(mesh);
+    }
+</script>
+</body>
+</html>
