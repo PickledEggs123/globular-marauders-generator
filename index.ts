@@ -89,7 +89,7 @@ program.command("embed")
         if (type === "planet") {
             const data = JSON.parse(await fs.promises.readFile(source, {encoding: "utf8"}));
             const image = await fs.promises.readFile(`${path.basename(source, path.extname(source))}.jpeg`);
-            data.image = `data:image/jpeg;${Buffer.from(image).toString("base64")}`;
+            data.image = `data:image/jpeg;base64,${Buffer.from(image).toString("base64")}`;
             await fs.promises.writeFile(source, JSON.stringify(data), {encoding: "utf8"});
         } else {
             throw new Error("Can only embed ['Planet'] image");
