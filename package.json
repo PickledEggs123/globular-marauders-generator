@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
+    "deploy": "npm publish",
+    "prepublish": "npm run build",
     "run-mesh-planet": "npm run build && node dist/index.js mesh planet output.mesh",
     "run-image-planet": "npm run build && node dist/index.js image planet output.mesh",
     "run-embed-image-into-mesh-planet": "npm run build && node dist/index.js embed planet output.mesh",
