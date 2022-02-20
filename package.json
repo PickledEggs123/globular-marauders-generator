@@ -1,8 +1,8 @@
 {
-  "name": "globular-marauders-generator",
+  "name": "@pickledeggs123/globular-marauders-generator",
   "version": "0.1.1",
-  "description": "",
-  "main": "index.js",
+  "description": "A command line tool used to generate meshes for the globular-marauders resume video game",
+  "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "deploy": "npm publish",
@@ -13,8 +13,15 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "PickledEggs123",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pickledeggs123/globular-marauders-generator.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "dependencies": {
     "@pickledeggs123/globular-marauders-game": "^0.2.32",
     "commander": "^9.0.0",
