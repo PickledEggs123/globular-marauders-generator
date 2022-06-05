@@ -10,6 +10,7 @@
     "run-mesh-planet": "npm run build && node dist/index.js mesh planet output.mesh",
     "run-image-planet": "npm run build && node dist/index.js image planet output.mesh",
     "run-embed-image-into-mesh-planet": "npm run build && node dist/index.js embed planet output.mesh",
+    "run-mesh-planet-gltf": "npm run build && node dist/index.js mesh-gltf planet output.mesh.glb",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -23,6 +24,7 @@
     "registry": "https://npm.pkg.github.com"
   },
   "dependencies": {
+    "@gltf-transform/core": "^2.1.5",
     "@pickledeggs123/globular-marauders-game": "^0.2.32",
     "commander": "^9.0.0",
     "puppeteer": "^13.3.2"

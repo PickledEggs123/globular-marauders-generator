@@ -1,9 +1,8 @@
-import { program } from "commander";
+import {program} from "commander";
 import puppeteer from "puppeteer";
 import fs from "fs";
 import path from "path";
-import {Game} from "@pickledeggs123/globular-marauders-game/lib/src";
-import {IGameMesh} from "@pickledeggs123/globular-marauders-game/lib/src/Interface";
+import {generatePlanet, generatePlanetGltf} from "./helpers";
 
 program.command("mesh")
     .description("generate a planet mesh")
@@ -11,43 +10,21 @@ program.command("mesh")
     .argument("destination", "the output file")
     .action(async (type, destination) => {
         if (type === "planet") {
-            const game: Game = new Game();
-            const planetVoronoiCells = game.generateGoodPoints(100, 10);
-            const planetGeometryData = planetVoronoiCells.reduce((acc, v) => {
-                // color of voronoi tile
-                const color: [number, number, number] = Math.random() > 0.33 ? [0.33, 0.33, 1] : [0.33, 1, 0.33];
-
-                // initial center index
-                const startingIndex = acc.index.reduce((acc, a) => Math.max(acc, a + 1), 0);
-                acc.position.push.apply(acc.position, v.centroid);
-                acc.color.push.apply(acc.color, color);
-
-                for (let i = 0; i < v.vertices.length; i++) {
-                    // vertex data
-                    const a = v.vertices[i % v.vertices.length];
-                    acc.position.push.apply(acc.position, a);
-                    acc.color.push.apply(acc.color, color);
-
-                    // triangle data
-                    acc.index.push(
-                        startingIndex,
-                        startingIndex + (i % v.vertices.length) + 1,
-                        startingIndex + ((i + 1) % v.vertices.length) + 1
-                    );
-                }
-                return acc;
-            }, {position: [], color: [], index: []} as { position: number[], color: number[], index: number[] });
-
-            const data: IGameMesh = {
-                attributes: [{
-                    id: "aPosition", buffer: planetGeometryData.position, size: 3
-                }, {
-                    id: "aColor", buffer: planetGeometryData.color, size: 3
-                }],
-                index: planetGeometryData.index
-            };
-
+            const data = generatePlanet();
             await fs.promises.writeFile(destination, JSON.stringify(data), {encoding: "utf8"});
+        } else {
+            throw new Error("Can only generate ['Planet'] mesh");
+        }
+    });
+
+program.command("mesh-gltf")
+    .description("generate a planet mesh")
+    .argument("type", "the type of data to create")
+    .argument("destination", "the output file")
+    .action(async (type, destination) => {
+        if (type === "planet") {
+            const json = await generatePlanetGltf();
+            await fs.promises.writeFile(destination, json);
         } else {
             throw new Error("Can only generate ['Planet'] mesh");
         }
