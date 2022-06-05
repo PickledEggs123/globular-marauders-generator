@@ -40,9 +40,7 @@ export const generatePlanet = (): IGameMesh => {
     };
 };
 
-export const generatePlanetGltf = async (): Promise<Uint8Array> => {
-    const data = generatePlanet();
-
+export const generatePlanetGltf = async (data: IGameMesh): Promise<Uint8Array> => {
     const doc = new GltfDocument();
     const scene = doc.createScene();
     const node = doc.createNode("planet");
