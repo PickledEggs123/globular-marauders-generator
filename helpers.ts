@@ -62,7 +62,8 @@ export const generatePlanetGltf = async (data: IGameMesh): Promise<Uint8Array> =
     const primitive = doc.createPrimitive()
         .setIndices(indexAccessor)
         .setAttribute("POSITION", positionAccessor)
-        .setAttribute("COLOR_0", colorAccessor);
+        .setAttribute("COLOR_0", colorAccessor)
+        .setMaterial(doc.createMaterial().setDoubleSided(true));
     const mesh = doc.createMesh("planet");
     mesh.addPrimitive(primitive);
     node.setMesh(mesh);
