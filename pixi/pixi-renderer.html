@@ -29,11 +29,14 @@
 
                 attribute vec3 aPosition;
                 attribute vec3 aColor;
+                attribute vec3 aNormal;
 
                 varying vec3 vColor;
+                varying vec3 vNormal;
 
                 void main() {
                     vColor = aColor;
+                    vNormal = aNormal;
 
                     gl_Position = vec4(aPosition, 1.0);
                 }
@@ -42,9 +45,10 @@
                 precision mediump float;
 
                 varying vec3 vColor;
+                varying vec3 vNormal;
 
                 void main() {
-                    gl_FragColor = vec4(vColor, 1.0);
+                    gl_FragColor = vec4(vColor * (0.3 + max(dot(vNormal, vec3(0.0, 0.0, -1.0)), 0.0) * 0.7), 1.0);
                 }
             `;
         const planetProgram = new PIXI.Program(planetVertexShader, planetFragmentShader);
@@ -69,11 +73,14 @@
 
                 attribute vec3 aPosition;
                 attribute vec3 aColor;
+                attribute vec3 aNormal;
 
                 varying vec3 vColor;
+                varying vec3 vNormal;
 
                 void main() {
                     vColor = aColor;
+                    vNormal = aNormal;
 
                     gl_Position = vec4(aPosition * 0.025, 1.0);
                 }
@@ -82,9 +89,10 @@
                 precision mediump float;
 
                 varying vec3 vColor;
+                varying vec3 vNormal;
 
                 void main() {
-                    gl_FragColor = vec4(vColor, 1.0);
+                    gl_FragColor = vec4(vColor * (0.3 + max(dot(vNormal, vec3(0.0, 0.0, -1.0)), 0.0) * 0.7), 1.0);
                 }
             `;
         const planetProgram = new PIXI.Program(planetVertexShader, planetFragmentShader);

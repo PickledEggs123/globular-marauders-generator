@@ -13,12 +13,14 @@ export const generatePlanet = (): IGameMesh => {
         const startingIndex = acc.index.reduce((acc, a) => Math.max(acc, a + 1), 0);
         acc.position.push.apply(acc.position, v.centroid);
         acc.color.push.apply(acc.color, color);
+        acc.normal.push.apply(acc.normal, v.centroid);
 
         for (let i = 0; i < v.vertices.length; i++) {
             // vertex data
             const a = v.vertices[i % v.vertices.length];
             acc.position.push.apply(acc.position, a);
             acc.color.push.apply(acc.color, color);
+            acc.normal.push.apply(acc.normal, a);
 
             // triangle data
             acc.index.push(
@@ -28,13 +30,15 @@ export const generatePlanet = (): IGameMesh => {
             );
         }
         return acc;
-    }, {position: [], color: [], index: []} as { position: number[], color: number[], index: number[] });
+    }, {position: [], color: [], normal: [], index: []} as { position: number[], color: number[], normal: number[], index: number[] });
 
     return {
         attributes: [{
             id: "aPosition", buffer: planetGeometryData.position, size: 3
         }, {
             id: "aColor", buffer: planetGeometryData.color, size: 3
+        }, {
+            id: "aNormal", buffer: planetGeometryData.normal, size: 3
         }],
         index: planetGeometryData.index
     };
@@ -55,14 +59,19 @@ export const generatePlanetGltf = async (data: IGameMesh): Promise<Uint8Array> =
         .setArray(new Float32Array(data.attributes.find(x => x.id === "aPosition")!.buffer))
         .setType(Accessor.Type.VEC3)
         .setBuffer(buffer);
-    const colorAccessor = doc.createAccessor("aPosition")
+    const colorAccessor = doc.createAccessor("aColor")
         .setArray(new Float32Array(data.attributes.find(x => x.id === "aColor")!.buffer))
+        .setType(Accessor.Type.VEC3)
+        .setBuffer(buffer);
+    const normalAccessor = doc.createAccessor("aNormal")
+        .setArray(new Float32Array(data.attributes.find(x => x.id === "aNormal")!.buffer))
         .setType(Accessor.Type.VEC3)
         .setBuffer(buffer);
     const primitive = doc.createPrimitive()
         .setIndices(indexAccessor)
         .setAttribute("POSITION", positionAccessor)
         .setAttribute("COLOR_0", colorAccessor)
+        .setAttribute("NORMAL", normalAccessor)
         .setMaterial(doc.createMaterial().setDoubleSided(true));
     const mesh = doc.createMesh("planet");
     mesh.addPrimitive(primitive);

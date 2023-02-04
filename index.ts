@@ -35,6 +35,7 @@ program.command("convert-mesh")
             const index: number[] = [];
             const position: number[] = [];
             const color: number[] = [];
+            const normal: number[] = [];
 
             // parse data from gltf
             for (const node of document.getRoot().getDefaultScene().listChildren()) {
@@ -48,14 +49,16 @@ program.command("convert-mesh")
                             case Primitive.Mode.TRIANGLES: {
                                 const attributes = primitive.listAttributes();
                                 const iData = indices.getArray() as Uint32Array;
-                                const pData = attributes[0].getArray() as Float32Array;
+                                const pData = attributes[primitive.listSemantics().indexOf("POSITION")].getArray() as Float32Array;
+                                const nData = attributes[primitive.listSemantics().indexOf("NORMAL")].getArray() as Float32Array;
                                 let numVertices = 0;
                                 for (let i = 0; i < iData.length; i += 3) {
                                     index.push(iData[i] + indexOffset, iData[i + 1] + indexOffset, iData[i + 2] + indexOffset);
                                 }
-                                for (let i = 0; i < pData.length; i += 3) {
+                                for (let i = 0; i < pData.length && i < nData.length; i += 3) {
                                     position.push(pData[i], pData[i + 1], pData[i + 2]);
                                     color.push(...rgb.slice(0, 3));
+                                    normal.push(nData[i], nData[i + 1], nData[i + 2]);
                                     numVertices += 1;
                                 }
                                 indexOffset += numVertices;
@@ -72,6 +75,8 @@ program.command("convert-mesh")
                     id: "aPosition", buffer: position, size: 3
                 }, {
                     id: "aColor", buffer: color, size: 3
+                }, {
+                    id: "aNormal", buffer: normal, size: 3
                 }],
                 index
             };
