@@ -1,10 +1,10 @@
-import {IGameMesh} from "@pickledeggs123/globular-marauders-game/lib/src/Interface";
+import {ICameraState, IGameMesh} from "@pickledeggs123/globular-marauders-game/lib/src/Interface";
 import {Game} from "@pickledeggs123/globular-marauders-game/lib/src";
 import {Accessor, Document as GltfDocument, WebIO} from "@gltf-transform/core";
+import {VoronoiCell} from "@pickledeggs123/globular-marauders-game/lib/src/Graph";
+import {DelaunayGraph} from "@pickledeggs123/globular-marauders-game/lib/src/Graph";
 
-export const generatePlanet = (): IGameMesh => {
-    const game: Game = new Game();
-    const planetVoronoiCells = game.generateGoodPoints(100, 10);
+export const generatePlanetMesh = (planetVoronoiCells: VoronoiCell[]) => {
     const planetGeometryData = planetVoronoiCells.reduce((acc, v) => {
         // color of voronoi tile
         const color: [number, number, number] = Math.random() > 0.33 ? [0.33, 0.33, 1] : [0.33, 1, 0.33];
@@ -30,7 +30,12 @@ export const generatePlanet = (): IGameMesh => {
             );
         }
         return acc;
-    }, {position: [], color: [], normal: [], index: []} as { position: number[], color: number[], normal: number[], index: number[] });
+    }, {
+        position: [],
+        color: [],
+        normal: [],
+        index: []
+    } as { position: number[], color: number[], normal: number[], index: number[] });
 
     return {
         attributes: [{
@@ -42,6 +47,26 @@ export const generatePlanet = (): IGameMesh => {
         }],
         index: planetGeometryData.index
     };
+}
+
+export const generatePlanet = (): IGameMesh => {
+    const game: Game = new Game();
+    const planetVoronoiCells = game.generateGoodPoints(100, 10);
+    return generatePlanetMesh(planetVoronoiCells);
+};
+
+export const generatePlanetSteps = (): IGameMesh[] => {
+    const meshes: IGameMesh[] = [];
+    const game: Game = new Game();
+    let delaunayGraph: DelaunayGraph<any> = new DelaunayGraph<ICameraState>(game);
+    for (let i = 0; i < 10; i++) {
+        const lloydPoints = i === 0 ? game.generateGoodPointsStart<ICameraState>(100) : game.generateGoodPointsContinue<ICameraState>(100, delaunayGraph);
+        delaunayGraph = new DelaunayGraph<ICameraState>(game);
+        delaunayGraph.initializeWithPoints(lloydPoints);
+        const planetVoronoiCells = game.generateGoodPointsEnd<ICameraState>(100, delaunayGraph);
+        meshes.push(generatePlanetMesh(planetVoronoiCells));
+    }
+    return meshes;
 };
 
 export const generatePlanetGltf = async (data: IGameMesh): Promise<Uint8Array> => {

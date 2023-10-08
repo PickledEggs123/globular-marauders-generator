@@ -2,7 +2,7 @@ import {program} from "commander";
 import puppeteer from "puppeteer";
 import fs from "fs";
 import path from "path";
-import {generatePlanet, generatePlanetGltf} from "./helpers";
+import {generatePlanet, generatePlanetGltf, generatePlanetSteps} from "./helpers";
 import {IGameMesh} from "@pickledeggs123/globular-marauders-game/lib/src/Interface";
 import {NodeIO, Primitive} from '@gltf-transform/core';
 
@@ -95,6 +95,25 @@ program.command("mesh-gltf")
             const data = generatePlanet();
             const json = await generatePlanetGltf(data);
             await fs.promises.writeFile(destination, json);
+        } else {
+            throw new Error("Can only generate ['Planet'] mesh");
+        }
+    });
+
+program.command("mesh-gltf-step")
+    .description("generate a planet mesh with sub steps")
+    .argument("type", "the type of data to create")
+    .argument("destination", "the output files")
+    .action(async (type, destination) => {
+        if (type === "planet") {
+            const dataItems = generatePlanetSteps();
+            for (const data of dataItems) {
+                const json = await generatePlanetGltf(data);
+                const baseFileName = path.parse(destination).name;
+                const extName = path.extname(destination);
+                const fileName = baseFileName + dataItems.indexOf(data) + extName;
+                await fs.promises.writeFile(fileName, json);
+            }
         } else {
             throw new Error("Can only generate ['Planet'] mesh");
         }
