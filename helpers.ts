@@ -5,12 +5,48 @@ import {VoronoiCell} from "@pickledeggs123/globular-marauders-game/lib/src/Graph
 import {DelaunayGraph} from "@pickledeggs123/globular-marauders-game/lib/src/Graph";
 import {VoronoiTree, VoronoiTreeNode} from "@pickledeggs123/globular-marauders-game/lib/src/VoronoiTree";
 
-export const generatePlanetMesh = (planetVoronoiCells: VoronoiCell[], biomeVoronoiCells: VoronoiCell[] = undefined) => {
+export const generatePlanetMesh = (planetVoronoiCells: VoronoiCell[], biomeVoronoiCells: VoronoiCell[] = undefined, areaVoronoiCells: VoronoiCell[] = undefined) => {
     let planetGeometryData: {position: number[], color: number[], normal: number[], index: number[]};
-    if (!biomeVoronoiCells) {
+    if (!biomeVoronoiCells && !areaVoronoiCells) {
         planetGeometryData = planetVoronoiCells.reduce((acc, v) => {
             // color of voronoi tile
             const color: [number, number, number] = Math.random() > 0.33 ? [0.33, 0.33, 1] : [0.33, 1, 0.33];
+
+            // initial center index
+            const startingIndex = acc.index.reduce((acc, a) => Math.max(acc, a + 1), 0);
+            acc.position.push.apply(acc.position, v.centroid);
+            acc.color.push.apply(acc.color, color);
+            acc.normal.push.apply(acc.normal, v.centroid);
+
+            for (let i = 0; i < v.vertices.length; i++) {
+                // vertex data
+                const a = v.vertices[i % v.vertices.length];
+                acc.position.push.apply(acc.position, a);
+                acc.color.push.apply(acc.color, color);
+                acc.normal.push.apply(acc.normal, a);
+
+                // triangle data
+                acc.index.push(
+                    startingIndex,
+                    startingIndex + (i % v.vertices.length) + 1,
+                    startingIndex + ((i + 1) % v.vertices.length) + 1
+                );
+            }
+            return acc;
+        }, {
+            position: [],
+            color: [],
+            normal: [],
+            index: []
+        } as { position: number[], color: number[], normal: number[], index: number[] });
+    } else if (!areaVoronoiCells) {
+        const colors = planetVoronoiCells.map((x) => {
+            const color: [number, number, number] = Math.random() > 0.33 ? [0.33, 0.33, 1] : [0.33, 1, 0.33];
+            return [x, color] as [VoronoiCell, [number, number, number]];
+        });
+        planetGeometryData = biomeVoronoiCells.reduce((acc, v) => {
+            // color of voronoi tile
+            const color: [number, number, number] = colors.find((item) => item[0].containsPoint(v.centroid))[1];
 
             // initial center index
             const startingIndex = acc.index.reduce((acc, a) => Math.max(acc, a + 1), 0);
@@ -44,9 +80,13 @@ export const generatePlanetMesh = (planetVoronoiCells: VoronoiCell[], biomeVoron
             const color: [number, number, number] = Math.random() > 0.33 ? [0.33, 0.33, 1] : [0.33, 1, 0.33];
             return [x, color] as [VoronoiCell, [number, number, number]];
         });
-        planetGeometryData = biomeVoronoiCells.reduce((acc, v) => {
+        const colors2 = biomeVoronoiCells.map((x) => {
+            const color: [number, number, number] = colors.find((item) => item[0].containsPoint(x.centroid))[1];
+            return [x, color] as [VoronoiCell, [number, number, number]];
+        });
+        planetGeometryData = areaVoronoiCells.reduce((acc, v) => {
             // color of voronoi tile
-            const color: [number, number, number] = colors.find((item) => item[0].containsPoint(v.centroid))[1];
+            const color: [number, number, number] = colors2.find((item) => item[0].containsPoint(v.centroid))[1];
 
             // initial center index
             const startingIndex = acc.index.reduce((acc, a) => Math.max(acc, a + 1), 0);
@@ -92,6 +132,7 @@ export const generatePlanetMesh = (planetVoronoiCells: VoronoiCell[], biomeVoron
 export const generatePlanet = (): IGameMesh => {
     const game: Game = new Game();
     const planetVoronoiCells = game.generateGoodPoints(100, 10);
+
     const offsetVoronoiCells = game.generateGoodPoints(100, 10);
     const voronoiTerrain = new VoronoiTerrain(game);
     voronoiTerrain.setRecursionNodeLevels([10, 10, 10]);
@@ -104,7 +145,24 @@ export const generatePlanet = (): IGameMesh => {
             y.voronoiCell
         ], [] as VoronoiCell[])
     ], [] as VoronoiCell[]);
-    return generatePlanetMesh(planetVoronoiCells, combinedVoronoiCells);
+
+    const offsetVoronoiCells2 = game.generateGoodPoints(100, 10);
+    const voronoiTerrain2 = new VoronoiTerrain(game);
+    voronoiTerrain2.setRecursionNodeLevels([10, 10, 10]);
+    voronoiTerrain2.nodes = offsetVoronoiCells2.map(x => new VoronoiTreeNode<any>(game, x, 1, voronoiTerrain2));
+    voronoiTerrain2.generateTerrainPlanet(0, 3);
+    const combinedVoronoiCells2 = voronoiTerrain2.nodes.reduce((acc, x) => [
+        ...acc,
+        ...x.nodes.reduce((acc2, y) => [
+            ...acc2,
+            ...y.nodes.reduce((acc3, z) => [
+                ...acc3,
+                z.voronoiCell
+            ], [] as VoronoiCell[])
+        ], [] as VoronoiCell[])
+    ], [] as VoronoiCell[]);
+
+    return generatePlanetMesh(planetVoronoiCells, combinedVoronoiCells, combinedVoronoiCells2);
 };
 
 export const generatePlanetSteps = (): IGameMesh[] => {
