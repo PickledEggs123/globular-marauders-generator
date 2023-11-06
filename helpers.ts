@@ -1,9 +1,10 @@
 import {ICameraState, IGameMesh} from "@pickledeggs123/globular-marauders-game/lib/src/Interface";
-import {Game, VoronoiTerrain} from "@pickledeggs123/globular-marauders-game/lib/src";
+import {Game, Star, VoronoiTerrain} from "@pickledeggs123/globular-marauders-game/lib/src";
 import {Accessor, Document as GltfDocument, WebIO} from "@gltf-transform/core";
-import {VoronoiCell} from "@pickledeggs123/globular-marauders-game/lib/src/Graph";
+import {VoronoiCell, VoronoiGraph} from "@pickledeggs123/globular-marauders-game/lib/src/Graph";
 import {DelaunayGraph} from "@pickledeggs123/globular-marauders-game/lib/src/Graph";
 import {VoronoiTree, VoronoiTreeNode} from "@pickledeggs123/globular-marauders-game/lib/src/VoronoiTree";
+import * as Quaternion from "quaternion";
 
 export const generatePlanetMesh = (planetVoronoiCells: VoronoiCell[], biomeVoronoiCells: VoronoiCell[] = undefined, areaVoronoiCells: VoronoiCell[] = undefined) => {
     let planetGeometryData: {position: number[], color: number[], normal: number[], index: number[]};
@@ -84,9 +85,45 @@ export const generatePlanetMesh = (planetVoronoiCells: VoronoiCell[], biomeVoron
             const color: [number, number, number] = colors.find((item) => item[0].containsPoint(x.centroid))[1];
             return [x, color] as [VoronoiCell, [number, number, number]];
         });
-        planetGeometryData = areaVoronoiCells.reduce((acc, v) => {
+        let colors3 = areaVoronoiCells.map((x, i) => {
+            const color: [number, number, number] = colors2.find((item) => item[0].containsPoint(x.centroid))[1];
+            return [x, color] as [VoronoiCell, [number, number, number]];
+        });
+        const heightMap = new Map(colors3.map(([x, color]) => [x, color[1] === 1 ? 0 : -1]));
+        const heightSet = new Set(Array.from(heightMap).map(x => x[0]));
+        for (let i = 0; i < 5; i++) {
+            const heightDynamicProgramming = Array.from(heightSet);
+            const game = new Game();
+            const voronoiTree = new VoronoiTree<Star>(game);
+            for (const x of heightDynamicProgramming) {
+                const star = new Star(game);
+                star.position = Quaternion.fromBetweenVectors([0, 0, 1], x.centroid);
+                // @ts-ignore
+                star.voronoi = x;
+                voronoiTree.addItem(star);
+            }
+            const minHeight = heightDynamicProgramming.map(x => {
+                // @ts-ignore
+                const voronoiNeighbors = Array.from(voronoiTree.listItems(x.centroid)).filter(y => VoronoiGraph.angularDistance(x.centroid, y.voronoi.centroid, 1) < 0.075);
+                // @ts-ignore
+                const neightbors = voronoiNeighbors.map(y => heightMap.get(y.voronoi)).filter(z => isFinite(z) && !isNaN(z));
+                return [x, heightMap.get(x) >= 0 ? Math.min(...(neightbors.length ? neightbors : [-1])) + 1 : -1] as [VoronoiCell, number];
+            });
+            for (const [x, height] of minHeight) {
+                heightMap.set(x, height);
+            }
+        }
+        colors3 = colors3.map(([x, color]) => {
+            const height = heightMap.get(x);
+            if (height >= 0) {
+                const newColor = [color[0], color[1] - height / 5.0 * 0.66, color[2]];
+                return [x, newColor] as [VoronoiCell, [number, number, number]];
+            }
+            return [x, color] as [VoronoiCell, [number, number, number]];
+        });
+        planetGeometryData = areaVoronoiCells.reduce((acc, v, index) => {
             // color of voronoi tile
-            const color: [number, number, number] = colors2.find((item) => item[0].containsPoint(v.centroid))[1];
+            const color = colors3[index][1];
 
             // initial center index
             const startingIndex = acc.index.reduce((acc, a) => Math.max(acc, a + 1), 0);
