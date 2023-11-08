@@ -12,7 +12,7 @@ program.command("mesh")
     .argument("destination", "the output file")
     .action(async (type, destination) => {
         if (type === "planet") {
-            const data = generatePlanet(2);
+            const data = generatePlanet(2, new Date().toISOString());
             await fs.promises.writeFile(destination, JSON.stringify(data), {encoding: "utf8"});
         } else {
             throw new Error("Can only generate ['Planet'] mesh");
@@ -92,7 +92,7 @@ program.command("mesh-gltf")
     .argument("destination", "the output file")
     .action(async (type, destination) => {
         if (type === "planet") {
-            const data = generatePlanet(2);
+            const data = generatePlanet(2, new Date().toISOString());
             const json = await generatePlanetGltf(data);
             await fs.promises.writeFile(destination, json);
         } else {
