@@ -107,7 +107,7 @@ export const generatePlanetMesh = (planetVoronoiCells: VoronoiCell[], biomeVoron
                 const voronoiNeighbors = Array.from(voronoiTree.listItems(x.centroid)).filter(y => VoronoiGraph.angularDistance(x.centroid, y.voronoi.centroid, 1) < 0.075);
                 // @ts-ignore
                 const neightbors = voronoiNeighbors.map(y => heightMap.get(y.voronoi)).filter(z => isFinite(z) && !isNaN(z));
-                return [x, heightMap.get(x) >= 0 ? Math.min(...(neightbors.length ? neightbors : [-1])) + 1 : -1] as [VoronoiCell, number];
+                return [x, heightMap.get(x) >= 0 ? Math.min(...(neightbors.length ? neightbors : [-1])) + 1 : -(Math.min(2, ...(neightbors.length ? neightbors.map(y => y < 0 ? -y : 0) : [0])) + 1)] as [VoronoiCell, number];
             });
             for (const [x, height] of minHeight) {
                 heightMap.set(x, height);
@@ -118,8 +118,10 @@ export const generatePlanetMesh = (planetVoronoiCells: VoronoiCell[], biomeVoron
             if (height >= 0) {
                 const newColor = [color[0], color[1] - height / 5.0 * 0.66, color[2]];
                 return [x, newColor] as [VoronoiCell, [number, number, number]];
+            } else if (height < 0) {
+                const newColor = [color[0] + (3.0 + height) / 10.0 * 0.66, color[1] + (3.0 + height) / 10.0 * 0.66, color[2]];
+                return [x, newColor] as [VoronoiCell, [number, number, number]];
             }
-            return [x, color] as [VoronoiCell, [number, number, number]];
         });
         planetGeometryData = areaVoronoiCells.reduce((acc, v, index) => {
             // color of voronoi tile
