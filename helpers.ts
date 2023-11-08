@@ -6,7 +6,7 @@ import {DelaunayGraph} from "@pickledeggs123/globular-marauders-game/lib/src/Gra
 import {VoronoiTree, VoronoiTreeNode} from "@pickledeggs123/globular-marauders-game/lib/src/VoronoiTree";
 import * as Quaternion from "quaternion";
 
-export const generatePlanetMesh = (planetVoronoiCells: VoronoiCell[], biomeVoronoiCells: VoronoiCell[] = undefined, areaVoronoiCells: VoronoiCell[] = undefined) => {
+export const generatePlanetMesh = (planetVoronoiCells: VoronoiCell[], biomeVoronoiCells: VoronoiCell[] | undefined = undefined, areaVoronoiCells: VoronoiCell[] | undefined = undefined) => {
     let planetGeometryData: {position: number[], color: number[], normal: number[], index: number[]};
     if (!biomeVoronoiCells && !areaVoronoiCells) {
         planetGeometryData = planetVoronoiCells.reduce((acc, v) => {
@@ -168,38 +168,44 @@ export const generatePlanetMesh = (planetVoronoiCells: VoronoiCell[], biomeVoron
     };
 }
 
-export const generatePlanet = (): IGameMesh => {
+export const generatePlanet = (level: number): IGameMesh => {
     const game: Game = new Game();
     const planetVoronoiCells = game.generateGoodPoints(100, 10);
 
-    const offsetVoronoiCells = game.generateGoodPoints(100, 10);
-    const voronoiTerrain = new VoronoiTerrain(game);
-    voronoiTerrain.setRecursionNodeLevels([10, 10, 10]);
-    voronoiTerrain.nodes = offsetVoronoiCells.map(x => new VoronoiTreeNode<any>(game, x, 1, voronoiTerrain));
-    voronoiTerrain.generateTerrainPlanet(0, 2);
-    const combinedVoronoiCells = voronoiTerrain.nodes.reduce((acc, x) => [
-        ...acc,
-        ...x.nodes.reduce((acc2, y) => [
-            ...acc2,
-            y.voronoiCell
-        ], [] as VoronoiCell[])
-    ], [] as VoronoiCell[]);
-
-    const offsetVoronoiCells2 = game.generateGoodPoints(100, 10);
-    const voronoiTerrain2 = new VoronoiTerrain(game);
-    voronoiTerrain2.setRecursionNodeLevels([10, 10, 10]);
-    voronoiTerrain2.nodes = offsetVoronoiCells2.map(x => new VoronoiTreeNode<any>(game, x, 1, voronoiTerrain2));
-    voronoiTerrain2.generateTerrainPlanet(0, 3);
-    const combinedVoronoiCells2 = voronoiTerrain2.nodes.reduce((acc, x) => [
-        ...acc,
-        ...x.nodes.reduce((acc2, y) => [
-            ...acc2,
-            ...y.nodes.reduce((acc3, z) => [
-                ...acc3,
-                z.voronoiCell
+    let combinedVoronoiCells: VoronoiCell[] | undefined;
+    if (level >= 1) {
+        const offsetVoronoiCells = game.generateGoodPoints(100, 10);
+        const voronoiTerrain = new VoronoiTerrain(game);
+        voronoiTerrain.setRecursionNodeLevels([10, 10, 10]);
+        voronoiTerrain.nodes = offsetVoronoiCells.map(x => new VoronoiTreeNode<any>(game, x, 1, voronoiTerrain));
+        voronoiTerrain.generateTerrainPlanet(0, 2);
+        combinedVoronoiCells = voronoiTerrain.nodes.reduce((acc, x) => [
+            ...acc,
+            ...x.nodes.reduce((acc2, y) => [
+                ...acc2,
+                y.voronoiCell
             ], [] as VoronoiCell[])
-        ], [] as VoronoiCell[])
-    ], [] as VoronoiCell[]);
+        ], [] as VoronoiCell[]);
+    }
+
+    let combinedVoronoiCells2: VoronoiCell[] | undefined;
+    if (level >= 2) {
+        const offsetVoronoiCells2 = game.generateGoodPoints(100, 10);
+        const voronoiTerrain2 = new VoronoiTerrain(game);
+        voronoiTerrain2.setRecursionNodeLevels([10, 10, 10]);
+        voronoiTerrain2.nodes = offsetVoronoiCells2.map(x => new VoronoiTreeNode<any>(game, x, 1, voronoiTerrain2));
+        voronoiTerrain2.generateTerrainPlanet(0, 3);
+        combinedVoronoiCells2 = voronoiTerrain2.nodes.reduce((acc, x) => [
+            ...acc,
+            ...x.nodes.reduce((acc2, y) => [
+                ...acc2,
+                ...y.nodes.reduce((acc3, z) => [
+                    ...acc3,
+                    z.voronoiCell
+                ], [] as VoronoiCell[])
+            ], [] as VoronoiCell[])
+        ], [] as VoronoiCell[]);
+    }
 
     return generatePlanetMesh(planetVoronoiCells, combinedVoronoiCells, combinedVoronoiCells2);
 };
