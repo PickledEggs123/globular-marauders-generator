@@ -134,14 +134,19 @@ export const generatePlanetMesh = (game: Game, planetVoronoiCells: VoronoiCell[]
         colors3 = colors3.map(([x, color]) => {
             const height = heightMap.get(x);
             if (height >= 0) {
-                const newColor = [color[0] * game.seedRandom() * 0.9, color[1] - height / 5.0 * 0.66, color[2] * game.seedRandom() * 0.9];
+                const newColor = [color[0], color[1] - height / 5.0 * 0.66, color[2]];
                 return [x, newColor] as [VoronoiCell, [number, number, number]];
             } else if (height < 0) {
-                const newColor = [color[0] + (3.0 + height) / 10.0 * 0.66, color[1] + (3.0 + height) / 10.0 * 0.66, color[2 * game.seedRandom() * 0.9]];
+                const newColor = [color[0] + (3.0 + height) / 10.0 * 0.66, color[1] + (3.0 + height) / 10.0 * 0.66, color[2]];
                 return [x, newColor] as [VoronoiCell, [number, number, number]];
             }
         });
-        planetGeometryData = generateMesh(walkingVoronoiCells, colors3);
+        const colors4 = walkingVoronoiCells.map((x) => {
+            const color: [number, number, number] = colors3.find((item) => item[0].containsPoint(x.centroid))[1];
+            const newColor = [color[0] * game.seedRandom.double() * 0.1 + 0.9, color[1] * game.seedRandom.double() * 0.1 + 0.9, color[2] * game.seedRandom.double() * 0.1 + 0.9];
+            return [x, newColor] as [VoronoiCell, [number, number, number]];
+        });
+        planetGeometryData = generateMesh(walkingVoronoiCells, colors4);
     }
 
     return {
@@ -203,7 +208,7 @@ export const generatePlanet = (level: number, seed: string): IGameMesh => {
         game.seedRandom = seedrandom(`${seed}-level4`);
         const offsetVoronoiCells3 = game.generateGoodPoints(100, 10);
         const voronoiTerrain3 = new VoronoiTerrain(game);
-        voronoiTerrain3.setRecursionNodeLevels([10, 10, 10, 100]);
+        voronoiTerrain3.setRecursionNodeLevels([10, 10, 10, 10]);
         voronoiTerrain3.nodes = offsetVoronoiCells3.map(x => new VoronoiTreeNode<any>(game, x, 1, voronoiTerrain3));
         voronoiTerrain3.generateTerrainPlanet(0, 4);
         combinedVoronoiCells3 = voronoiTerrain3.nodes.reduce((acc, x) => [
