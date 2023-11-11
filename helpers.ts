@@ -10,7 +10,7 @@ import seedrandom from "seedrandom";
 export const generatePlanetMesh = (game: Game, planetVoronoiCells: VoronoiCell[], biomeVoronoiCells: VoronoiCell[] | undefined = undefined, areaVoronoiCells: VoronoiCell[] | undefined = undefined, walkingVoronoiCells: VoronoiCell[] | undefined = undefined) => {
     let planetGeometryData: {position: number[], color: number[], normal: number[], index: number[]};
     const generateMesh = (voronoiCells: VoronoiCell[], colors: [VoronoiCell, [number, number, number]][]) => {
-        return planetVoronoiCells.reduce((acc, v, index) => {
+        return voronoiCells.reduce((acc, v, index) => {
             // color of voronoi tile
             const color: [number, number, number] = colors[index][1];
 
