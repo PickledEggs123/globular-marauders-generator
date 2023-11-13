@@ -93,7 +93,7 @@ program.command("mesh-gltf")
     .action(async (type, destination) => {
         if (type === "planet") {
             const data = generatePlanet(2, new Date().toISOString());
-            const json = await generatePlanetGltf(data);
+            const json = await generatePlanetGltf(data.mesh);
             await fs.promises.writeFile(destination, json);
         } else {
             throw new Error("Can only generate ['Planet'] mesh");
