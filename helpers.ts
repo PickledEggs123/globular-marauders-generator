@@ -167,7 +167,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             }],
             index: planetGeometryData.index
         } as IGameMesh,
-        voronoiTerrain: voronoiTree.serialize(),
+        voronoiTerrain: voronoiTree?.serialize(),
         heightMapData
     };
 }
