@@ -4,6 +4,7 @@ import {Accessor, Document as GltfDocument, WebIO} from "@gltf-transform/core";
 import {VoronoiCell, VoronoiGraph} from "@pickledeggs123/globular-marauders-game/lib/src/Graph";
 import {DelaunayGraph} from "@pickledeggs123/globular-marauders-game/lib/src/Graph";
 import {
+    ISerializedTree,
     ISerializedVoronoiTerrain,
     VoronoiTree,
     VoronoiTreeNode
@@ -176,7 +177,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
     };
 }
 
-export const generatePlanet = (level: number, seed: string): {mesh: IGameMesh, voronoiTerrain: ISerializedVoronoiTerrain, heightMapData: [number, number][] | null} => {
+export const generatePlanet = (level: number, seed: string): {mesh: IGameMesh, voronoiTerrain: ISerializedTree, heightMapData: [number, number][] | null} => {
     const game: Game = new Game();
     game.seedRandom = seedrandom(`${seed}-level1`);
     const planetVoronoiCells = game.generateGoodPoints(100, 10);
