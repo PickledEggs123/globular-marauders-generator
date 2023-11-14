@@ -14,6 +14,7 @@ import seedrandom from "seedrandom";
 export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, planetVoronoiCells: VoronoiCell[], biomeVoronoiCells: VoronoiCell[] | undefined = undefined, areaVoronoiCells: VoronoiCell[] | undefined = undefined, walkingVoronoiCells: VoronoiCell[] | undefined = undefined) => {
     let planetGeometryData: {position: number[], color: number[], normal: number[], index: number[]};
     let heightMapData: [number, number][] | null = null;
+    let colorData: [number, [number, number, number]][] | null = null;
     const generateMesh = (voronoiCells: VoronoiCell[], colors: [VoronoiCell, [number, number, number]][]) => {
         return voronoiCells.reduce((acc, v, index) => {
             // color of voronoi tile
@@ -103,6 +104,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 return [x, newColor] as [VoronoiCell, [number, number, number]];
             }
         });
+        colorData = Array.from(colors3.entries()).map(([key, value]) => [areaVoronoiCells.indexOf(value[0]), value[1]] as [number, [number, number, number]]);
         planetGeometryData = generateMesh(areaVoronoiCells, colors3);
     } else {
         const colors2 = biomeVoronoiCells.map((x) => {
@@ -148,6 +150,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 return [x, newColor] as [VoronoiCell, [number, number, number]];
             }
         });
+        colorData = Array.from(colors3.entries()).map(([key, value]) => [areaVoronoiCells.indexOf(value[0]), value[1]] as [number, [number, number, number]]);
         const colors4 = walkingVoronoiCells.map((x) => {
             const color: [number, number, number] = (colors3.find((item) => item[0].containsPoint(x.centroid)) ?? [x, [0, 0, 0]])[1];
             const newColor = [color[0] * (game.seedRandom.double() * 0.1 + 0.9), color[1] * (game.seedRandom.double() * 0.1 + 0.9), color[2] * (game.seedRandom.double() * 0.1 + 0.9)];
@@ -168,6 +171,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             index: planetGeometryData.index
         } as IGameMesh,
         voronoiTerrain: voronoiTree?.serialize(),
+        colorData,
         heightMapData
     };
 }
