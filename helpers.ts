@@ -57,17 +57,23 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
         planetGeometryData = generateMesh(planetVoronoiCells, colors);
     } else if (!areaVoronoiCells && !walkingVoronoiCells) {
         const colors2 = biomeVoronoiCells.map((x) => {
-            const color: [number, number, number] = colors.find((item) => item[0].containsPoint(x.centroid))[1];
+            const colorPair1 = colors.find(item => item[0].containsPoint(x.centroid));
+            const colorPair2 = colorPair1 ? null : colors.map((y) => [y, VoronoiGraph.angularDistance(y[0].centroid, x.centroid, 1)] as [[VoronoiCell, [number, number, number]], number]).sort((a, b) => a[1] - b[1]).map(y => y[0])[0];
+            const color: [number, number, number] = (colorPair1 ?? colorPair2)[1];
             return [x, color] as [VoronoiCell, [number, number, number]];
         });
         planetGeometryData = generateMesh(biomeVoronoiCells, colors2);
     } else if (!walkingVoronoiCells) {
         const colors2 = biomeVoronoiCells.map((x) => {
-            const color: [number, number, number] = colors.find((item) => item[0].containsPoint(x.centroid))[1];
+            const colorPair1 = colors.find(item => item[0].containsPoint(x.centroid));
+            const colorPair2 = colorPair1 ? null : colors.map((y) => [y, VoronoiGraph.angularDistance(y[0].centroid, x.centroid, 1)] as [[VoronoiCell, [number, number, number]], number]).sort((a, b) => a[1] - b[1]).map(y => y[0])[0];
+            const color: [number, number, number] = (colorPair1 ?? colorPair2)[1];
             return [x, color] as [VoronoiCell, [number, number, number]];
         });
         let colors3 = areaVoronoiCells.map((x, i) => {
-            const color: [number, number, number] = colors2.find((item) => item[0].containsPoint(x.centroid))[1];
+            const colorPair1 = colors2.find(item => item[0].containsPoint(x.centroid));
+            const colorPair2 = colorPair1 ? null : colors2.map((y) => [y, VoronoiGraph.angularDistance(y[0].centroid, x.centroid, 1)] as [[VoronoiCell, [number, number, number]], number]).sort((a, b) => a[1] - b[1]).map(y => y[0])[0];
+            const color: [number, number, number] = (colorPair1 ?? colorPair2)[1];
             return [x, color] as [VoronoiCell, [number, number, number]];
         });
         const heightMap = new Map(colors3.map(([x, color]) => [x, color[1] === 1 ? 0 : -1]));
@@ -109,11 +115,15 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
         planetGeometryData = generateMesh(areaVoronoiCells, colors3);
     } else {
         const colors2 = biomeVoronoiCells.map((x) => {
-            const color: [number, number, number] = colors.find((item) => item[0].containsPoint(x.centroid))[1];
+            const colorPair1 = colors.find(item => item[0].containsPoint(x.centroid));
+            const colorPair2 = colorPair1 ? null : colors.map((y) => [y, VoronoiGraph.angularDistance(y[0].centroid, x.centroid, 1)] as [[VoronoiCell, [number, number, number]], number]).sort((a, b) => a[1] - b[1]).map(y => y[0])[0];
+            const color: [number, number, number] = (colorPair1 ?? colorPair2)[1];
             return [x, color] as [VoronoiCell, [number, number, number]];
         });
         let colors3 = areaVoronoiCells.map((x, i) => {
-            const color: [number, number, number] = colors2.find((item) => item[0].containsPoint(x.centroid))[1];
+            const colorPair1 = colors2.find(item => item[0].containsPoint(x.centroid));
+            const colorPair2 = colorPair1 ? null : colors2.map((y) => [y, VoronoiGraph.angularDistance(y[0].centroid, x.centroid, 1)] as [[VoronoiCell, [number, number, number]], number]).sort((a, b) => a[1] - b[1]).map(y => y[0])[0];
+            const color: [number, number, number] = (colorPair1 ?? colorPair2)[1];
             return [x, color] as [VoronoiCell, [number, number, number]];
         });
         const heightMap = new Map(colors3.map(([x, color]) => [x, color[1] === 1 ? 0 : -1]));
@@ -153,7 +163,9 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
         });
         colorData = Array.from(colors3.entries()).map(([key, value]) => [areaVoronoiCells.indexOf(value[0]), value[1]] as [number, [number, number, number]]);
         const colors4 = walkingVoronoiCells.map((x) => {
-            const color: [number, number, number] = (colors3.find((item) => item[0].containsPoint(x.centroid)) ?? [x, [0, 0, 0]])[1];
+            const colorPair1 = colors3.find(item => item[0].containsPoint(x.centroid));
+            const colorPair2 = colorPair1 ? null : colors3.map((y) => [y, VoronoiGraph.angularDistance(y[0].centroid, x.centroid, 1)] as [[VoronoiCell, [number, number, number]], number]).sort((a, b) => a[1] - b[1]).map(y => y[0])[0];
+            const color: [number, number, number] = (colorPair1 ?? colorPair2)[1];
             const newColor = [color[0] * (game.seedRandom.double() * 0.1 + 0.9), color[1] * (game.seedRandom.double() * 0.1 + 0.9), color[2] * (game.seedRandom.double() * 0.1 + 0.9)];
             return [x, newColor] as [VoronoiCell, [number, number, number]];
         });
