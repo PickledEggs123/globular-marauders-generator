@@ -16,6 +16,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
     let planetGeometryData: {position: number[], color: number[], normal: number[], index: number[]};
     let heightMapData: [number, number][] | null = null;
     let colorData: [number, [number, number, number]][] | null = null;
+
     const generateMesh = (voronoiCells: VoronoiCell[], colors: [VoronoiCell, [number, number, number]][]) => {
         return voronoiCells.reduce((acc, v, index) => {
             // color of voronoi tile
@@ -31,14 +32,31 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 // vertex data
                 const a = v.vertices[i % v.vertices.length];
                 acc.position.push.apply(acc.position, a);
+                const bottom = DelaunayGraph.normalize(a);
+                bottom[0] *= 0.5;
+                bottom[1] *= 0.5;
+                bottom[2] *= 0.5;
+                acc.position.push.apply(acc.position, bottom);
                 acc.color.push.apply(acc.color, color);
+                acc.color.push.apply(acc.color, color);
+                acc.normal.push.apply(acc.normal, a);
                 acc.normal.push.apply(acc.normal, a);
 
                 // triangle data
                 acc.index.push(
                     startingIndex,
-                    startingIndex + (i % v.vertices.length) + 1,
-                    startingIndex + ((i + 1) % v.vertices.length) + 1
+                    startingIndex + (i % v.vertices.length) * 2 + 1,
+                    startingIndex + ((i + 1) % v.vertices.length) * 2 + 1
+                );
+                acc.index.push(
+                    startingIndex + (i % v.vertices.length) * 2 + 1,
+                    startingIndex + (i % v.vertices.length) * 2 + 2,
+                    startingIndex + ((i + 1) % v.vertices.length) * 2 + 1
+                );
+                acc.index.push(
+                    startingIndex + (i % v.vertices.length) * 2 + 2,
+                    startingIndex + (i % v.vertices.length) * 2 + 2,
+                    startingIndex + ((i + 1) % v.vertices.length) * 2 + 1
                 );
             }
             return acc;
@@ -64,6 +82,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
         });
         planetGeometryData = generateMesh(biomeVoronoiCells, colors2);
     } else if (!walkingVoronoiCells) {
+        // extrapolate color to area cells
         const colors2 = biomeVoronoiCells.map((x) => {
             const colorPair1 = colors.find(item => item[0].containsPoint(x.centroid));
             const colorPair2 = colorPair1 ? null : colors.map((y) => [y, VoronoiGraph.angularDistance(y[0].centroid, x.centroid, 1)] as [[VoronoiCell, [number, number, number]], number]).sort((a, b) => a[1] - b[1]).map(y => y[0])[0];
@@ -76,6 +95,8 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             const color: [number, number, number] = (colorPair1 ?? colorPair2)[1];
             return [x, color] as [VoronoiCell, [number, number, number]];
         });
+
+        // compute height
         const heightMap = new Map(colors3.map(([x, color]) => [x, color[1] === 1 ? 0 : -1]));
         const heightSet = new Set(Array.from(heightMap).map(x => x[0]));
         for (let i = 0; i < 5; i++) {
@@ -101,6 +122,62 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             }
         }
         heightMapData = Array.from(heightMap.entries()).map(([key, value]) => [areaVoronoiCells.indexOf(key), value] as [number, number]);
+
+        // compute height of individual vertex
+        const heightVertices = new Array<[[number, number, number], number]>();
+        const heightEdges = new Array<[[number, number, number], [number, number, number], number]>();
+        // load height edges
+        for (const [x, height] of heightMap.entries()) {
+            for (let i = 0; i < x.vertices.length; i++) {
+                const a = x.vertices[i];
+                const b = x.vertices[(i + 1) % x.vertices.length];
+                heightEdges.push([a, b, height]);
+            }
+        }
+        for (const [x, height] of heightMap.entries()) {
+            const insertHeightItem = (vertex: [number, number, number]) => {
+                const heightVertexItem = heightVertices.find((item => VoronoiGraph.angularDistance(item[0], vertex, 1) < 0.0001));
+                const heightEdgeItem = heightEdges.find((item) => VoronoiGraph.angularDistance(item[0], vertex, 1) + VoronoiGraph.angularDistance(item[1], vertex, 1) < VoronoiGraph.angularDistance(item[0], item[1], 1) + 0.0001);
+                // max height of shared vertex
+                if (heightVertexItem && height > heightVertexItem[1]) {
+                    heightVertexItem[1] = height;
+                }
+                if (!heightVertexItem && heightEdgeItem) {
+                    heightVertices.push([vertex, heightEdgeItem[2]]);
+                }
+                // new item
+                if (!heightVertexItem && !heightEdgeItem) {
+                    heightVertices.push([vertex, height]);
+                }
+            }
+            // for each edge vertex
+            for (const vertex of x.vertices) {
+                insertHeightItem(vertex);
+            }
+
+            // for each centroid
+            const centroid = x.centroid;
+            insertHeightItem(centroid);
+        }
+
+        // modify walkingVoronoiCells with new heights
+        for (const voronoi of areaVoronoiCells) {
+            const modifyVertex = (vertex: [number, number, number]) => {
+                const heightItem = heightVertices.find((item => VoronoiGraph.angularDistance(item[0], vertex, 1) < 0.0001));
+                if (!heightItem) {
+                    throw new Error("Failed to find height item");
+                }
+                const output = DelaunayGraph.normalize(heightItem[0]);
+                output[0] *= heightItem[1] * 0.02 + 1;
+                output[1] *= heightItem[1] * 0.02 + 1;
+                output[2] *= heightItem[1] * 0.02 + 1;
+                return output;
+            };
+            voronoi.centroid = modifyVertex(voronoi.centroid);
+            voronoi.vertices = voronoi.vertices.map(modifyVertex);
+        }
+
+        // compute color from height
         colors3 = colors3.map(([x, color]) => {
             const height = heightMap.get(x);
             if (height >= 0) {
@@ -114,6 +191,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
         colorData = Array.from(colors3.entries()).map(([key, value]) => [areaVoronoiCells.indexOf(value[0]), value[1]] as [number, [number, number, number]]);
         planetGeometryData = generateMesh(areaVoronoiCells, colors3);
     } else {
+        // extrapolate color to area cells
         const colors2 = biomeVoronoiCells.map((x) => {
             const colorPair1 = colors.find(item => item[0].containsPoint(x.centroid));
             const colorPair2 = colorPair1 ? null : colors.map((y) => [y, VoronoiGraph.angularDistance(y[0].centroid, x.centroid, 1)] as [[VoronoiCell, [number, number, number]], number]).sort((a, b) => a[1] - b[1]).map(y => y[0])[0];
@@ -126,6 +204,8 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             const color: [number, number, number] = (colorPair1 ?? colorPair2)[1];
             return [x, color] as [VoronoiCell, [number, number, number]];
         });
+
+        // compute height
         const heightMap = new Map(colors3.map(([x, color]) => [x, color[1] === 1 ? 0 : -1]));
         const heightSet = new Set(Array.from(heightMap).map(x => x[0]));
         for (let i = 0; i < 5; i++) {
@@ -151,6 +231,8 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             }
         }
         heightMapData = Array.from(heightMap.entries()).map(([key, value]) => [areaVoronoiCells.indexOf(key), value] as [number, number]);
+
+        // compute color from height
         colors3 = colors3.map(([x, color]) => {
             const height = heightMap.get(x);
             if (height >= 0) {
@@ -169,6 +251,8 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             const newColor = [color[0] * (game.seedRandom.double() * 0.1 + 0.9), color[1] * (game.seedRandom.double() * 0.1 + 0.9), color[2] * (game.seedRandom.double() * 0.1 + 0.9)];
             return [x, newColor] as [VoronoiCell, [number, number, number]];
         });
+
+        // generate mesh
         planetGeometryData = generateMesh(walkingVoronoiCells, colors4);
     }
 
