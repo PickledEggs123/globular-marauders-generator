@@ -5,7 +5,6 @@ import {VoronoiCell, VoronoiGraph} from "@pickledeggs123/globular-marauders-game
 import {DelaunayGraph} from "@pickledeggs123/globular-marauders-game/lib/src/Graph";
 import {
     ISerializedTree,
-    ISerializedVoronoiTerrain,
     VoronoiTree,
     VoronoiTreeNode
 } from "@pickledeggs123/globular-marauders-game/lib/src/VoronoiTree";
@@ -125,29 +124,62 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
 
         // compute height of individual vertex
         const heightVertices = new Array<[[number, number, number], number]>();
+        const heightVerticesTreeGame = new Game();
+        const heightVerticesTree = new VoronoiTree<Star>(heightVerticesTreeGame);
+        heightVerticesTree.defaultRecursionNodeLevels = [20, 5, 5, 5, 5];
         const heightEdges = new Array<[[number, number, number], [number, number, number], number]>();
+        const heightEdgesTreeGame = new Game();
+        const heightEdgesTree = new VoronoiTree<Star>(heightEdgesTreeGame);
         // load height edges
         for (const [x, height] of heightMap.entries()) {
             for (let i = 0; i < x.vertices.length; i++) {
                 const a = x.vertices[i];
                 const b = x.vertices[(i + 1) % x.vertices.length];
-                heightEdges.push([a, b, height]);
+                const item = [a, b, height] as [[number, number, number], [number, number, number], number];
+                const star1 = new Star(heightEdgesTreeGame);
+                star1.position = Quaternion.fromBetweenVectors([0, 0, 1], a);
+                // @ts-ignore
+                star1.data = item;
+                heightEdgesTree.addItem(star1);
+                const star2 = new Star(heightEdgesTreeGame);
+                star2.position = Quaternion.fromBetweenVectors([0, 0, 1], b);
+                // @ts-ignore
+                star2.data = item;
+                heightEdgesTree.addItem(star2);
+                heightEdges.push(item);
             }
         }
         for (const [x, height] of heightMap.entries()) {
             const insertHeightItem = (vertex: [number, number, number]) => {
-                const heightVertexItem = heightVertices.find((item => VoronoiGraph.angularDistance(item[0], vertex, 1) < 0.0001));
-                const heightEdgeItem = heightEdges.find((item) => VoronoiGraph.angularDistance(item[0], vertex, 1) + VoronoiGraph.angularDistance(item[1], vertex, 1) < VoronoiGraph.angularDistance(item[0], item[1], 1) + 0.0001);
+                // @ts-ignore
+                const heightVertexItem = Array.from(heightVerticesTree.listItems(vertex, Math.PI / 32)).map(star => star.data).find((item) => VoronoiGraph.angularDistance(item[0], vertex, 1) < 0.00001);
+                // @ts-ignore
+                const heightEdgeItem = Array.from(heightEdgesTree.listItems(vertex, Math.PI / 4)).map(star => star.data).find((item) => VoronoiGraph.angularDistance(item[0], vertex, 1) + VoronoiGraph.angularDistance(item[1], vertex, 1) < VoronoiGraph.angularDistance(item[0], item[1], 1) + 0.00001);
                 // max height of shared vertex
                 if (heightVertexItem && height > heightVertexItem[1]) {
                     heightVertexItem[1] = height;
                 }
+                if (heightVertexItem && heightEdgeItem && heightEdgeItem[2] > heightVertexItem[1]) {
+                    heightVertexItem[1] = heightEdgeItem[2];
+                }
                 if (!heightVertexItem && heightEdgeItem) {
-                    heightVertices.push([vertex, heightEdgeItem[2]]);
+                    const item = [[vertex[0], vertex[1], vertex[2]], heightEdgeItem[2]] as [[number, number, number], number];
+                    const star = new Star(heightVerticesTreeGame);
+                    star.position = Quaternion.fromBetweenVectors([0, 0, 1], vertex);
+                    // @ts-ignore
+                    star.data = item;
+                    heightVerticesTree.addItem(star);
+                    heightVertices.push(item);
                 }
                 // new item
                 if (!heightVertexItem && !heightEdgeItem) {
-                    heightVertices.push([vertex, height]);
+                    const item = [[vertex[0], vertex[1], vertex[2]], height] as [[number, number, number], number];
+                    const star = new Star(heightVerticesTreeGame);
+                    star.position = Quaternion.fromBetweenVectors([0, 0, 1], vertex);
+                    // @ts-ignore
+                    star.data = item;
+                    heightVerticesTree.addItem(star);
+                    heightVertices.push(item);
                 }
             }
             // for each edge vertex
@@ -160,14 +192,25 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             insertHeightItem(centroid);
         }
 
-        // modify walkingVoronoiCells with new heights
+        // modify areaVoronoiCells with new heights
         for (const voronoi of areaVoronoiCells) {
             const modifyVertex = (vertex: [number, number, number]) => {
-                const heightItem = heightVertices.find((item => VoronoiGraph.angularDistance(item[0], vertex, 1) < 0.0001));
-                if (!heightItem) {
-                    throw new Error("Failed to find height item");
+                // @ts-ignore
+                const arr = Array.from(heightVerticesTree.listItems(vertex, Math.PI / 32)).map(star => star.data);
+                let heightItem = arr.find((item => VoronoiGraph.angularDistance(item[0], vertex, 1) < 0.00001));
+                if (!heightItem && arr[0]) {
+                    heightItem = arr.find((item => VoronoiGraph.angularDistance(item[0], vertex, 1) < 0.001));
                 }
-                const output = DelaunayGraph.normalize(heightItem[0]);
+                if (!heightItem && arr[0]) {
+                    heightItem = arr.find((item => VoronoiGraph.angularDistance(item[0], vertex, 1) < 0.1));
+                }
+                if (!heightItem && arr[0]) {
+                    heightItem = arr[0];
+                }
+                if (!heightItem) {
+                    heightItem = [[vertex[0], vertex[1], vertex[2]], 0];
+                }
+                const output = DelaunayGraph.normalize(vertex);
                 output[0] *= heightItem[1] * 0.02 + 1;
                 output[1] *= heightItem[1] * 0.02 + 1;
                 output[2] *= heightItem[1] * 0.02 + 1;
@@ -231,6 +274,193 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             }
         }
         heightMapData = Array.from(heightMap.entries()).map(([key, value]) => [areaVoronoiCells.indexOf(key), value] as [number, number]);
+
+
+        // compute height of individual vertex
+        const heightVertices = new Array<[[number, number, number], number]>();
+        const heightVerticesTreeGame = new Game();
+        const heightVerticesTree = new VoronoiTree<Star>(heightVerticesTreeGame);
+        heightVerticesTree.defaultRecursionNodeLevels = [20, 5, 5, 5, 5];
+        const heightEdges = new Array<[[number, number, number], [number, number, number], number]>();
+        const heightEdgesTreeGame = new Game();
+        const heightEdgesTree = new VoronoiTree<Star>(heightEdgesTreeGame);
+        // load height edges
+        for (const [x, height] of heightMap.entries()) {
+            for (let i = 0; i < x.vertices.length; i++) {
+                const a = x.vertices[i];
+                const b = x.vertices[(i + 1) % x.vertices.length];
+                const item = [a, b, height] as [[number, number, number], [number, number, number], number];
+                const star1 = new Star(heightEdgesTreeGame);
+                star1.position = Quaternion.fromBetweenVectors([0, 0, 1], a);
+                // @ts-ignore
+                star1.data = item;
+                heightEdgesTree.addItem(star1);
+                const star2 = new Star(heightEdgesTreeGame);
+                star2.position = Quaternion.fromBetweenVectors([0, 0, 1], b);
+                // @ts-ignore
+                star2.data = item;
+                heightEdgesTree.addItem(star2);
+                heightEdges.push(item);
+            }
+        }
+        for (const [x, height] of heightMap.entries()) {
+            const insertHeightItem = (vertex: [number, number, number]) => {
+                // @ts-ignore
+                const heightVertexItem = Array.from(heightVerticesTree.listItems(vertex, Math.PI / 32)).map(star => star.data).find((item) => VoronoiGraph.angularDistance(item[0], vertex, 1) < 0.00001);
+                // @ts-ignore
+                const heightEdgeItem = Array.from(heightEdgesTree.listItems(vertex, Math.PI / 4)).map(star => star.data).find((item) => VoronoiGraph.angularDistance(item[0], vertex, 1) + VoronoiGraph.angularDistance(item[1], vertex, 1) < VoronoiGraph.angularDistance(item[0], item[1], 1) + 0.00001);
+                // max height of shared vertex
+                if (heightVertexItem && height > heightVertexItem[1]) {
+                    heightVertexItem[1] = height;
+                }
+                if (heightVertexItem && heightEdgeItem && heightEdgeItem[2] > heightVertexItem[1]) {
+                    heightVertexItem[1] = heightEdgeItem[2];
+                }
+                if (!heightVertexItem && heightEdgeItem) {
+                    const item = [[vertex[0], vertex[1], vertex[2]], heightEdgeItem[2]] as [[number, number, number], number];
+                    const star = new Star(heightVerticesTreeGame);
+                    star.position = Quaternion.fromBetweenVectors([0, 0, 1], vertex);
+                    // @ts-ignore
+                    star.data = item;
+                    heightVerticesTree.addItem(star);
+                    heightVertices.push(item);
+                }
+                // new item
+                if (!heightVertexItem && !heightEdgeItem) {
+                    const item = [[vertex[0], vertex[1], vertex[2]], height] as [[number, number, number], number];
+                    const star = new Star(heightVerticesTreeGame);
+                    star.position = Quaternion.fromBetweenVectors([0, 0, 1], vertex);
+                    // @ts-ignore
+                    star.data = item;
+                    heightVerticesTree.addItem(star);
+                    heightVertices.push(item);
+                }
+            }
+            // for each edge vertex
+            for (const vertex of x.vertices) {
+                insertHeightItem(vertex);
+            }
+
+            // for each centroid
+            const centroid = x.centroid;
+            insertHeightItem(centroid);
+        }
+
+        // modify areaVoronoiCells with new heights
+        for (const voronoi of areaVoronoiCells) {
+            const modifyVertex = (vertex: [number, number, number]) => {
+                // @ts-ignore
+                const arr = Array.from(heightVerticesTree.listItems(vertex, Math.PI / 32)).map(star => star.data);
+                let heightItem = arr.find((item => VoronoiGraph.angularDistance(item[0], vertex, 1) < 0.00001));
+                if (!heightItem && arr[0]) {
+                    heightItem = arr.find((item => VoronoiGraph.angularDistance(item[0], vertex, 1) < 0.001));
+                }
+                if (!heightItem && arr[0]) {
+                    heightItem = arr.find((item => VoronoiGraph.angularDistance(item[0], vertex, 1) < 0.1));
+                }
+                if (!heightItem && arr[0]) {
+                    heightItem = arr[0];
+                }
+                if (!heightItem) {
+                    heightItem = [[vertex[0], vertex[1], vertex[2]], 0];
+                }
+                const output = DelaunayGraph.normalize(vertex);
+                output[0] *= heightItem[1] * 0.02 + 1;
+                output[1] *= heightItem[1] * 0.02 + 1;
+                output[2] *= heightItem[1] * 0.02 + 1;
+                return output;
+            };
+            voronoi.centroid = modifyVertex(voronoi.centroid);
+            voronoi.vertices = voronoi.vertices.map(modifyVertex);
+        }
+
+        // modify walkingVoronoiCells height
+        const areaVoronoiCellsTreeGame = new Game();
+        const areaVoronoiCellsTree = new VoronoiTree<Star>(areaVoronoiCellsTreeGame);
+        areaVoronoiCellsTree.defaultRecursionNodeLevels = [20, 5, 5, 5, 5];
+        for (const x of areaVoronoiCells) {
+            const star = new Star(areaVoronoiCellsTreeGame);
+            star.position = Quaternion.fromBetweenVectors([0, 0, 1], x.centroid);
+            // @ts-ignore
+            star.data = x;
+            areaVoronoiCellsTree.addItem(star);
+        }
+        for (const voronoi of walkingVoronoiCells) {
+            // @ts-ignore
+            const arr = Array.from(areaVoronoiCellsTree.listItems(voronoi.centroid, Math.PI / 32)).map(star => star.data);
+            let area = arr.find((item) => item.containsPoint(voronoi.centroid));
+            if (!area) {
+                area = areaVoronoiCells.find((item) => item.containsPoint(voronoi.centroid));
+            }
+            if (!area) {
+                area = areaVoronoiCells[0];
+            }
+            if (!area) {
+                throw new Error("Could not find area voronoi cell for plane ray intersection");
+            }
+            const modifyVertex = (vertex: [number, number, number]) => {
+                if (!area) {
+                    throw new Error("Failed to find height item");
+                }
+                const findPlane = () => {
+                    // for each pair of vertices
+                    for (let i = 0; i < area.vertices.length; i++) {
+                        // test line segment and point
+                        const a = area.vertices[i % area.vertices.length];
+                        const b = area.vertices[(i + 1) % area.vertices.length];
+                        const c = area.centroid;
+                        const testSegment = () => {
+                            const pairs = [[a, b], [b, c], [c, a]];
+                            for (const [p, q] of pairs) {
+                                const testPair = () => {
+                                    const n = DelaunayGraph.normalize(DelaunayGraph.crossProduct(p, q));
+                                    const v = DelaunayGraph.dotProduct(n, vertex);
+                                    return v >= 0;
+                                };
+                                if (!testPair()) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        };
+                        if (testSegment()) {
+                            return [
+                                DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.subtract(a, c), DelaunayGraph.subtract(b, c))),
+                                c
+                            ];
+                        }
+                    }
+                    throw new Error("Could not find segment of voronoi to test for height");
+                };
+                const [planeNormal, planePoint] = findPlane();
+                const rayDirection = DelaunayGraph.add(vertex, vertex);
+                rayDirection[0] *= -1;
+                rayDirection[1] *= -1;
+                rayDirection[2] *= -1;
+                const rayOrigin = DelaunayGraph.add(vertex, vertex);
+                const denom = DelaunayGraph.dotProduct(planeNormal, rayDirection);
+                if (Math.abs(denom) < 0.00001) {
+                    throw new Error("Could not find correct angle plane for test of height");
+                }
+                const t = DelaunayGraph.dotProduct(DelaunayGraph.subtract(vertex, rayOrigin), planeNormal) / denom;
+                if (t < 0) {
+                    throw new Error("Could not find correct distance from plane for test of height");
+                }
+                const tLength = DelaunayGraph.add(rayDirection, [0, 0, 0]);
+                tLength[0] *= t;
+                tLength[1] *= t;
+                tLength[2] *= t;
+                const point = DelaunayGraph.add(rayOrigin, tLength);
+                const height = DelaunayGraph.distanceFormula(point, [0, 0, 0]);
+                const output = DelaunayGraph.normalize(vertex);
+                output[0] *= height;
+                output[1] *= height;
+                output[2] *= height;
+                return output;
+            };
+            voronoi.centroid = modifyVertex(voronoi.centroid);
+            voronoi.vertices = voronoi.vertices.map(modifyVertex);
+        }
 
         // compute color from height
         colors3 = colors3.map(([x, color]) => {
