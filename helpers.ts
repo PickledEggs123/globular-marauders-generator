@@ -30,6 +30,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             for (let i = 0; i < v.vertices.length; i++) {
                 // vertex data
                 const a = v.vertices[i % v.vertices.length];
+                const b = v.vertices[(i + 1) % v.vertices.length];
                 acc.position.push.apply(acc.position, a);
                 const bottom = DelaunayGraph.normalize(a);
                 bottom[0] *= 0.5;
@@ -39,16 +40,16 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 acc.color.push.apply(acc.color, color);
                 acc.color.push.apply(acc.color, color);
                 acc.normal.push.apply(acc.normal, a);
-                acc.normal.push.apply(acc.normal, a);
+                acc.normal.push.apply(acc.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
 
                 // triangle data
                 const a1 = startingIndex + (i % v.vertices.length) * 2 + 1;
-                const b = startingIndex + (i % v.vertices.length) * 2 + 2;
+                const b1 = startingIndex + (i % v.vertices.length) * 2 + 2;
                 const c = startingIndex + ((i + 1) % v.vertices.length) * 2 + 1;
                 const d = startingIndex + ((i + 1) % v.vertices.length) * 2 + 2;
                 acc.index.push(startingIndex, a1, c);
                 acc.index.push(a1, d, c);
-                acc.index.push(a1, b, d);
+                acc.index.push(a1, b1, d);
             }
             return acc;
         }, {
