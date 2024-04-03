@@ -42,21 +42,13 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 acc.normal.push.apply(acc.normal, a);
 
                 // triangle data
-                acc.index.push(
-                    startingIndex,
-                    startingIndex + (i % v.vertices.length) * 2 + 1,
-                    startingIndex + ((i + 1) % v.vertices.length) * 2 + 1
-                );
-                acc.index.push(
-                    startingIndex + (i % v.vertices.length) * 2 + 1,
-                    startingIndex + (i % v.vertices.length) * 2 + 2,
-                    startingIndex + ((i + 1) % v.vertices.length) * 2 + 1
-                );
-                acc.index.push(
-                    startingIndex + (i % v.vertices.length) * 2 + 2,
-                    startingIndex + (i % v.vertices.length) * 2 + 2,
-                    startingIndex + ((i + 1) % v.vertices.length) * 2 + 1
-                );
+                const a1 = startingIndex + (i % v.vertices.length) * 2 + 1;
+                const b = startingIndex + (i % v.vertices.length) * 2 + 2;
+                const c = startingIndex + ((i + 1) % v.vertices.length) * 2 + 1;
+                const d = startingIndex + ((i + 1) % v.vertices.length) * 2 + 2;
+                acc.index.push(startingIndex, b, a1);
+                acc.index.push(a1, c, d);
+                acc.index.push(a1, d, b);
             }
             return acc;
         }, {
