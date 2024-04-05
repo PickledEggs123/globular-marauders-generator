@@ -37,7 +37,11 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
     };
 
     const generateMesh = (voronoiCells: VoronoiCell[], colors: [VoronoiCell, [number, number, number]][]) => {
-        const addToMesh = (v: VoronoiCell, index: number) => {
+        const addToMesh = (v: VoronoiCell | null, index: number) => {
+            if (!v) {
+                return;
+            }
+
             // color of voronoi tile
             const color: [number, number, number] = colors[index][1];
 
@@ -79,13 +83,13 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
 
         if (breakApart) {
             // handle water
-            const water = voronoiCells.filter(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) < 0.99);
+            const water = voronoiCells.map(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) < 0.99 ? v : null);
             water.forEach(addToMesh);
             meshes.push(makeMesh());
 
             // handle collidable land
             planetGeometryData.collidable = true;
-            const land = voronoiCells.filter(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) >= 0.99);
+            const land = voronoiCells.map(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) >= 0.99 ? v : null);
             land.forEach(addToMesh);
             meshes.push(makeMesh());
         } else {
