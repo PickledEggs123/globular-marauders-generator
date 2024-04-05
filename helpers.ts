@@ -79,13 +79,15 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
 
         if (breakApart) {
             // handle water
-            const water = voronoiCells.filter(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) < -0.00001);
+            const water = voronoiCells.filter(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) < 1.00001);
             water.forEach(addToMesh);
+            meshes.push(makeMesh());
 
             // handle collidable land
             planetGeometryData.collidable = true;
-            const land = voronoiCells.filter(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) >= -0.00001);
+            const land = voronoiCells.filter(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) >= 1.00001);
             land.forEach(addToMesh);
+            meshes.push(makeMesh());
         } else {
             voronoiCells.forEach(addToMesh);
             meshes.push(makeMesh());
