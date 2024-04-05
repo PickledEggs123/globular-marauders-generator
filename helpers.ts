@@ -11,60 +11,92 @@ import {
 import * as Quaternion from "quaternion";
 import seedrandom from "seedrandom";
 
-export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, planetVoronoiCells: VoronoiCell[], biomeVoronoiCells: VoronoiCell[] | undefined = undefined, areaVoronoiCells: VoronoiCell[] | undefined = undefined, walkingVoronoiCells: VoronoiCell[] | undefined = undefined) => {
-    let planetGeometryData: {position: number[], color: number[], normal: number[], index: number[]};
+export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, planetVoronoiCells: VoronoiCell[], biomeVoronoiCells: VoronoiCell[] | undefined = undefined, areaVoronoiCells: VoronoiCell[] | undefined = undefined, walkingVoronoiCells: VoronoiCell[] | undefined = undefined, breakApart: boolean) => {
+    let planetGeometryData = {position: [] as number[], color: [] as number[], normal: [] as number[], index: [] as number[], collidable: false as boolean};
     let heightMapData: [number, number][] | null = null;
     let colorData: [number, [number, number, number]][] | null = null;
+    const meshes: IGameMesh[] = [];
+
+    const makeMesh = () => {
+        const mesh = {
+            attributes: [{
+                id: "aPosition", buffer: planetGeometryData.position, size: 3
+            }, {
+                id: "aColor", buffer: planetGeometryData.color, size: 3
+            }, {
+                id: "aNormal", buffer: planetGeometryData.normal, size: 3
+            }],
+            index: planetGeometryData.index,
+            collidable: planetGeometryData.collidable,
+        } as IGameMesh;
+        planetGeometryData.position = [];
+        planetGeometryData.color = [];
+        planetGeometryData.normal = [];
+        planetGeometryData.index = [];
+        return mesh;
+    };
 
     const generateMesh = (voronoiCells: VoronoiCell[], colors: [VoronoiCell, [number, number, number]][]) => {
-        return voronoiCells.reduce((acc, v, index) => {
+        const addToMesh = (v: VoronoiCell, index: number) => {
             // color of voronoi tile
             const color: [number, number, number] = colors[index][1];
 
             // initial center index
-            const startingIndex = acc.index.reduce((acc, a) => Math.max(acc, a + 1), 0);
-            acc.position.push.apply(acc.position, v.centroid);
-            acc.color.push.apply(acc.color, color);
-            acc.normal.push.apply(acc.normal, v.centroid);
+            const startingIndex = planetGeometryData.index.reduce((acc, a) => Math.max(acc, a + 1), 0);
+            planetGeometryData.position.push.apply(planetGeometryData.position, v.centroid);
+            planetGeometryData.color.push.apply(planetGeometryData.color, color);
+            planetGeometryData.normal.push.apply(planetGeometryData.normal, v.centroid);
 
             for (let i = 0; i < v.vertices.length; i++) {
                 // vertex data
                 const a = v.vertices[i % v.vertices.length];
                 const b = v.vertices[(i + 1) % v.vertices.length];
-                acc.position.push.apply(acc.position, a);
+                planetGeometryData.position.push.apply(planetGeometryData.position, a);
                 const bottom = DelaunayGraph.normalize(a);
                 bottom[0] *= 0.5;
                 bottom[1] *= 0.5;
                 bottom[2] *= 0.5;
-                acc.position.push.apply(acc.position, bottom);
-                acc.color.push.apply(acc.color, color);
-                acc.color.push.apply(acc.color, color);
-                acc.normal.push.apply(acc.normal, a);
-                acc.normal.push.apply(acc.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
+                planetGeometryData.position.push.apply(planetGeometryData.position, bottom);
+                planetGeometryData.color.push.apply(planetGeometryData.color, color);
+                planetGeometryData.color.push.apply(planetGeometryData.color, color);
+                planetGeometryData.normal.push.apply(planetGeometryData.normal, a);
+                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
 
                 // triangle data
                 const a1 = startingIndex + (i % v.vertices.length) * 2 + 1;
                 const b1 = startingIndex + (i % v.vertices.length) * 2 + 2;
                 const c = startingIndex + ((i + 1) % v.vertices.length) * 2 + 1;
                 const d = startingIndex + ((i + 1) % v.vertices.length) * 2 + 2;
-                acc.index.push(startingIndex, a1, c);
-                acc.index.push(a1, d, c);
-                acc.index.push(a1, b1, d);
+                planetGeometryData.index.push(startingIndex, a1, c);
+                planetGeometryData.index.push(a1, d, c);
+                planetGeometryData.index.push(a1, b1, d);
             }
-            return acc;
-        }, {
-            position: [],
-            color: [],
-            normal: [],
-            index: []
-        } as { position: number[], color: number[], normal: number[], index: number[] });
+
+            if (breakApart && startingIndex >= 20000) {
+                meshes.push(makeMesh());
+            }
+        };
+
+        if (breakApart) {
+            // handle water
+            const water = voronoiCells.filter(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) < -0.00001);
+            water.forEach(addToMesh);
+
+            // handle collidable land
+            planetGeometryData.collidable = true;
+            const land = voronoiCells.filter(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) >= -0.00001);
+            land.forEach(addToMesh);
+        } else {
+            voronoiCells.forEach(addToMesh);
+            meshes.push(makeMesh());
+        }
     }
     const colors = planetVoronoiCells.map((x) => {
         const color: [number, number, number] = game.seedRandom.double() > 0.33 ? [0.33, 0.33, 1] : [0.33, 1, 0.33];
         return [x, color] as [VoronoiCell, [number, number, number]];
     });
     if (!biomeVoronoiCells && !areaVoronoiCells && !walkingVoronoiCells) {
-        planetGeometryData = generateMesh(planetVoronoiCells, colors);
+        generateMesh(planetVoronoiCells, colors);
     } else if (!areaVoronoiCells && !walkingVoronoiCells) {
         const colors2 = biomeVoronoiCells.map((x) => {
             const colorPair1 = colors.find(item => item[0].containsPoint(x.centroid));
@@ -72,7 +104,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             const color: [number, number, number] = (colorPair1 ?? colorPair2)[1];
             return [x, color] as [VoronoiCell, [number, number, number]];
         });
-        planetGeometryData = generateMesh(biomeVoronoiCells, colors2);
+        generateMesh(biomeVoronoiCells, colors2);
     } else if (!walkingVoronoiCells) {
         // extrapolate color to area cells
         const colors2 = biomeVoronoiCells.map((x) => {
@@ -225,7 +257,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             }
         });
         colorData = Array.from(colors3.entries()).map(([key, value]) => [areaVoronoiCells.indexOf(value[0]), value[1]] as [number, [number, number, number]]);
-        planetGeometryData = generateMesh(areaVoronoiCells, colors3);
+        generateMesh(areaVoronoiCells, colors3);
     } else {
         // extrapolate color to area cells
         const colors2 = biomeVoronoiCells.map((x) => {
@@ -476,27 +508,18 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
         });
 
         // generate mesh
-        planetGeometryData = generateMesh(walkingVoronoiCells, colors4);
+        generateMesh(walkingVoronoiCells, colors4);
     }
 
     return {
-        mesh: {
-            attributes: [{
-                id: "aPosition", buffer: planetGeometryData.position, size: 3
-            }, {
-                id: "aColor", buffer: planetGeometryData.color, size: 3
-            }, {
-                id: "aNormal", buffer: planetGeometryData.normal, size: 3
-            }],
-            index: planetGeometryData.index
-        } as IGameMesh,
+        meshes,
         voronoiTerrain: voronoiTree?.serializeTerrainPlanet(),
         colorData,
         heightMapData
     };
 }
 
-export const generatePlanet = (level: number, seed: string): {mesh: IGameMesh, voronoiTerrain: ISerializedTree, heightMapData: [number, number][] | null} => {
+export const generatePlanet = (level: number, seed: string, breakApart: boolean): {meshes: IGameMesh[], voronoiTerrain: ISerializedTree, heightMapData: [number, number][] | null} => {
     const game: Game = new Game();
     game.seedRandom = seedrandom(`${seed}-level1`);
     const planetVoronoiCells = game.generateGoodPoints(100, 10);
@@ -563,7 +586,7 @@ export const generatePlanet = (level: number, seed: string): {mesh: IGameMesh, v
     }
 
     game.seedRandom = seedrandom(`${seed}-mesh-gen`);
-    return generatePlanetMesh(game, voronoiTerrain, planetVoronoiCells, combinedVoronoiCells, combinedVoronoiCells2, combinedVoronoiCells3);
+    return generatePlanetMesh(game, voronoiTerrain, planetVoronoiCells, combinedVoronoiCells, combinedVoronoiCells2, combinedVoronoiCells3, breakApart);
 };
 
 export const generatePlanetSteps = (): IGameMesh[] => {
@@ -575,7 +598,7 @@ export const generatePlanetSteps = (): IGameMesh[] => {
         delaunayGraph = new DelaunayGraph<ICameraState>(game);
         delaunayGraph.initializeWithPoints(lloydPoints);
         const planetVoronoiCells = game.generateGoodPointsEnd<ICameraState>(100, delaunayGraph);
-        meshes.push(generatePlanetMesh(game, new VoronoiTerrain(game), planetVoronoiCells).mesh);
+        meshes.push(generatePlanetMesh(game, new VoronoiTerrain(game), planetVoronoiCells, undefined, undefined, undefined,false).meshes[0]);
     }
     return meshes;
 };
