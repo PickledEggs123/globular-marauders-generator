@@ -109,7 +109,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
 
                 // startingIndex 8
-                planetGeometryData.position.push.apply(planetGeometryData.position, b);
+                planetGeometryData.position.push.apply(planetGeometryData.position, bottomB);
                 planetGeometryData.color.push.apply(planetGeometryData.color, color);
                 planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
 
