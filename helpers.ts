@@ -76,20 +76,20 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 planetGeometryData.index.push(a1, b1, d);
             }
 
-            if (breakApart && startingIndex >= 20000) {
+            if (breakApart && startingIndex >= 8000) {
                 meshes.push(makeMesh());
             }
         };
 
         if (breakApart) {
             // handle water
-            const water = voronoiCells.map(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) < 0.99 ? v : null);
+            const water = voronoiCells.map(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) < 0.97 ? v : null);
             water.forEach(addToMesh);
             meshes.push(makeMesh());
 
             // handle collidable land
             planetGeometryData.collidable = true;
-            const land = voronoiCells.map(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) >= 0.99 ? v : null);
+            const land = voronoiCells.map(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) >= 0.97 ? v : null);
             land.forEach(addToMesh);
             meshes.push(makeMesh());
         } else {
@@ -98,10 +98,27 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
         }
     }
     const colors = planetVoronoiCells.map((x) => {
-        const color: [number, number, number] = game.seedRandom.double() > 0.33 ? [0.33, 0.33, 1] : [0.33, 1, 0.33];
+        const color: [number, number, number] = game.seedRandom.double() > 0.30 ? [0.33, 0.33, 1] : [0.33, 1, 0.33];
         return [x, color] as [VoronoiCell, [number, number, number]];
     });
+    const modifyWaterVertexHeight = (vertex: [number, number, number], v: VoronoiCell, colorMap: Map<VoronoiCell, [number, number, number]>) => {
+        let height = 0;
+        if (colorMap.get(v)![2] === 1) {
+            height = -3;
+        }
+        const output = DelaunayGraph.normalize(vertex);
+        output[0] *= height * 0.02 + 1;
+        output[1] *= height * 0.02 + 1;
+        output[2] *= height * 0.02 + 1;
+        return output;
+    };
     if (!biomeVoronoiCells && !areaVoronoiCells && !walkingVoronoiCells) {
+        // modify planetVoronoiCells with new heights
+        const colorMap = new Map<VoronoiCell, [number, number, number]>(colors);
+        for (const voronoi of planetVoronoiCells) {
+            voronoi.centroid = modifyWaterVertexHeight(voronoi.centroid, voronoi, colorMap);
+            voronoi.vertices = voronoi.vertices.map(v => modifyWaterVertexHeight(v, voronoi, colorMap));
+        }
         generateMesh(planetVoronoiCells, colors);
     } else if (!areaVoronoiCells && !walkingVoronoiCells) {
         const colors2 = biomeVoronoiCells.map((x) => {
@@ -110,6 +127,12 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             const color: [number, number, number] = (colorPair1 ?? colorPair2)[1];
             return [x, color] as [VoronoiCell, [number, number, number]];
         });
+        // modify planetVoronoiCells with new heights
+        const colorMap = new Map<VoronoiCell, [number, number, number]>(colors2);
+        for (const voronoi of biomeVoronoiCells) {
+            voronoi.centroid = modifyWaterVertexHeight(voronoi.centroid, voronoi, colorMap);
+            voronoi.vertices = voronoi.vertices.map(v => modifyWaterVertexHeight(v, voronoi, colorMap));
+        }
         generateMesh(biomeVoronoiCells, colors2);
     } else if (!walkingVoronoiCells) {
         // extrapolate color to area cells
