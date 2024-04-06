@@ -46,34 +46,80 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             const color: [number, number, number] = colors[index][1];
 
             // initial center index
-            const startingIndex = planetGeometryData.index.reduce((acc, a) => Math.max(acc, a + 1), 0);
-            planetGeometryData.position.push.apply(planetGeometryData.position, v.centroid);
-            planetGeometryData.color.push.apply(planetGeometryData.color, color);
-            planetGeometryData.normal.push.apply(planetGeometryData.normal, v.centroid);
+            let startingIndex = planetGeometryData.index.length;
 
             for (let i = 0; i < v.vertices.length; i++) {
                 // vertex data
                 const a = v.vertices[i % v.vertices.length];
                 const b = v.vertices[(i + 1) % v.vertices.length];
+
+                const bottomA = DelaunayGraph.normalize(a);
+                bottomA[0] *= 0.9;
+                bottomA[1] *= 0.9;
+                bottomA[2] *= 0.9;
+                const bottomB = DelaunayGraph.normalize(b);
+                bottomB[0] *= 0.9;
+                bottomB[1] *= 0.9;
+                bottomB[2] *= 0.9;
+
+                // triangle 1
+
+                // startingIndex 0
+                planetGeometryData.position.push.apply(planetGeometryData.position, v.centroid);
+                planetGeometryData.color.push.apply(planetGeometryData.color, color);
+                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(v.centroid));
+
+                // startingIndex 1
                 planetGeometryData.position.push.apply(planetGeometryData.position, a);
-                const bottom = DelaunayGraph.normalize(a);
-                bottom[0] *= 0.5;
-                bottom[1] *= 0.5;
-                bottom[2] *= 0.5;
-                planetGeometryData.position.push.apply(planetGeometryData.position, bottom);
                 planetGeometryData.color.push.apply(planetGeometryData.color, color);
+                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(a));
+
+                // startingIndex 2
+                planetGeometryData.position.push.apply(planetGeometryData.position, b);
                 planetGeometryData.color.push.apply(planetGeometryData.color, color);
-                planetGeometryData.normal.push.apply(planetGeometryData.normal, a);
+                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(b));
+
+                // triangle 2
+
+                // starting index 3
+                planetGeometryData.position.push.apply(planetGeometryData.position, a);
+                planetGeometryData.color.push.apply(planetGeometryData.color, color);
                 planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
 
-                // triangle data
-                const a1 = startingIndex + (i % v.vertices.length) * 2 + 1;
-                const b1 = startingIndex + (i % v.vertices.length) * 2 + 2;
-                const c = startingIndex + ((i + 1) % v.vertices.length) * 2 + 1;
-                const d = startingIndex + ((i + 1) % v.vertices.length) * 2 + 2;
-                planetGeometryData.index.push(startingIndex, a1, c);
-                planetGeometryData.index.push(a1, d, c);
-                planetGeometryData.index.push(a1, b1, d);
+                // startingIndex 4
+                planetGeometryData.position.push.apply(planetGeometryData.position, bottomB);
+                planetGeometryData.color.push.apply(planetGeometryData.color, color);
+                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
+
+                // startingIndex 5
+                planetGeometryData.position.push.apply(planetGeometryData.position, b);
+                planetGeometryData.color.push.apply(planetGeometryData.color, color);
+                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
+
+                // triangle 3
+
+                // starting index 6
+                planetGeometryData.position.push.apply(planetGeometryData.position, a);
+                planetGeometryData.color.push.apply(planetGeometryData.color, color);
+                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
+
+                // startingIndex 7
+                planetGeometryData.position.push.apply(planetGeometryData.position, bottomA);
+                planetGeometryData.color.push.apply(planetGeometryData.color, color);
+                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
+
+                // startingIndex 8
+                planetGeometryData.position.push.apply(planetGeometryData.position, b);
+                planetGeometryData.color.push.apply(planetGeometryData.color, color);
+                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
+
+                // indices
+                planetGeometryData.index.push(startingIndex, startingIndex + 1, startingIndex + 2);
+                planetGeometryData.index.push(startingIndex + 3, startingIndex + 4, startingIndex + 5);
+                planetGeometryData.index.push(startingIndex + 6, startingIndex + 7, startingIndex + 8);
+
+                // update starting index
+                startingIndex = planetGeometryData.index.length;
             }
 
             if (breakApart && startingIndex >= 8000) {
