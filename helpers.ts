@@ -12,7 +12,7 @@ import * as Quaternion from "quaternion";
 import seedrandom from "seedrandom";
 
 export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, planetVoronoiCells: VoronoiCell[], biomeVoronoiCells: VoronoiCell[] | undefined = undefined, areaVoronoiCells: VoronoiCell[] | undefined = undefined, walkingVoronoiCells: VoronoiCell[] | undefined = undefined, breakApart: boolean) => {
-    let planetGeometryData = {position: [] as number[], color: [] as number[], normal: [] as number[], index: [] as number[], collidable: false as boolean};
+    let planetGeometryData = {position: [] as number[], color: [] as number[], normal: [] as number[], index: [] as number[], collidable: false as boolean, navmesh: false as boolean};
     let heightMapData: [number, number][] | null = null;
     let colorData: [number, [number, number, number]][] | null = null;
     const meshes: IGameMesh[] = [];
@@ -28,6 +28,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             }],
             index: planetGeometryData.index,
             collidable: planetGeometryData.collidable,
+            navmesh: planetGeometryData.navmesh,
         } as IGameMesh;
         planetGeometryData.position = [];
         planetGeometryData.color = [];
@@ -122,7 +123,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 startingIndex = planetGeometryData.index.length;
             }
 
-            if (breakApart && startingIndex >= 8000) {
+            if (breakApart && startingIndex >= 8000 && !planetGeometryData.navmesh) {
                 meshes.push(makeMesh());
             }
         };
@@ -137,6 +138,13 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             planetGeometryData.collidable = true;
             const land = voronoiCells.map(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) >= 0.97 ? v : null);
             land.forEach(addToMesh);
+            meshes.push(makeMesh());
+
+            // handle nav mesh
+            planetGeometryData.collidable = false;
+            planetGeometryData.navmesh = true;
+            const navmesh = voronoiCells.map(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) >= 0.99 ? v : null);
+            navmesh.forEach(addToMesh);
             meshes.push(makeMesh());
         } else {
             voronoiCells.forEach(addToMesh);
