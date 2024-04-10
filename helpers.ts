@@ -80,44 +80,48 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 planetGeometryData.color.push.apply(planetGeometryData.color, color);
                 planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(b));
 
-                // triangle 2
+                if (!planetGeometryData.navmesh) {
+                    // triangle 2
 
-                // starting index 3
-                planetGeometryData.position.push.apply(planetGeometryData.position, a);
-                planetGeometryData.color.push.apply(planetGeometryData.color, color);
-                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
+                    // starting index 3
+                    planetGeometryData.position.push.apply(planetGeometryData.position, a);
+                    planetGeometryData.color.push.apply(planetGeometryData.color, color);
+                    planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
 
-                // startingIndex 4
-                planetGeometryData.position.push.apply(planetGeometryData.position, bottomB);
-                planetGeometryData.color.push.apply(planetGeometryData.color, color);
-                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
+                    // startingIndex 4
+                    planetGeometryData.position.push.apply(planetGeometryData.position, bottomB);
+                    planetGeometryData.color.push.apply(planetGeometryData.color, color);
+                    planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
 
-                // startingIndex 5
-                planetGeometryData.position.push.apply(planetGeometryData.position, b);
-                planetGeometryData.color.push.apply(planetGeometryData.color, color);
-                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
+                    // startingIndex 5
+                    planetGeometryData.position.push.apply(planetGeometryData.position, b);
+                    planetGeometryData.color.push.apply(planetGeometryData.color, color);
+                    planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
 
-                // triangle 3
+                    // triangle 3
 
-                // starting index 6
-                planetGeometryData.position.push.apply(planetGeometryData.position, a);
-                planetGeometryData.color.push.apply(planetGeometryData.color, color);
-                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
+                    // starting index 6
+                    planetGeometryData.position.push.apply(planetGeometryData.position, a);
+                    planetGeometryData.color.push.apply(planetGeometryData.color, color);
+                    planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
 
-                // startingIndex 7
-                planetGeometryData.position.push.apply(planetGeometryData.position, bottomA);
-                planetGeometryData.color.push.apply(planetGeometryData.color, color);
-                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
+                    // startingIndex 7
+                    planetGeometryData.position.push.apply(planetGeometryData.position, bottomA);
+                    planetGeometryData.color.push.apply(planetGeometryData.color, color);
+                    planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
 
-                // startingIndex 8
-                planetGeometryData.position.push.apply(planetGeometryData.position, bottomB);
-                planetGeometryData.color.push.apply(planetGeometryData.color, color);
-                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
+                    // startingIndex 8
+                    planetGeometryData.position.push.apply(planetGeometryData.position, bottomB);
+                    planetGeometryData.color.push.apply(planetGeometryData.color, color);
+                    planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
+                }
 
                 // indices
                 planetGeometryData.index.push(startingIndex, startingIndex + 1, startingIndex + 2);
-                planetGeometryData.index.push(startingIndex + 3, startingIndex + 4, startingIndex + 5);
-                planetGeometryData.index.push(startingIndex + 6, startingIndex + 7, startingIndex + 8);
+                if (!planetGeometryData.navmesh) {
+                    planetGeometryData.index.push(startingIndex + 3, startingIndex + 4, startingIndex + 5);
+                    planetGeometryData.index.push(startingIndex + 6, startingIndex + 7, startingIndex + 8);
+                }
 
                 // update starting index
                 startingIndex = planetGeometryData.index.length;
