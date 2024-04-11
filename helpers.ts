@@ -19,7 +19,9 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
 
     const makeMesh = () => {
         const mesh = {
-            attributes: [{
+            attributes: planetGeometryData.navmesh ? [{
+                id: "aPosition", buffer: planetGeometryData.position, size: 3
+            }] : [{
                 id: "aPosition", buffer: planetGeometryData.position, size: 3
             }, {
                 id: "aColor", buffer: planetGeometryData.color, size: 3
@@ -53,9 +55,9 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                     let p = DelaunayGraph.normalize(point);
                     const height = DelaunayGraph.distanceFormula([0, 0, 0], point);
                     // @ts-ignore
-                    const nearestPoint = Array.from(voronoiTree.listItems(p, Math.PI / 32)).map(star => star.data).find((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.000001) ??
+                    const nearestPoint = Array.from(voronoiTree.listItems(p, Math.PI / 32)).map(star => star.data).find((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.0001) ??
                         // @ts-ignore
-                        Array.from(voronoiTree.listItems(p, Math.PI / 16)).map(star => star.data).find((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.0001) ??
+                        Array.from(voronoiTree.listItems(p, Math.PI / 16)).map(star => star.data).find((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.001) ??
                         // @ts-ignore
                         Array.from(voronoiTree.listItems(p, Math.PI / 8)).map(star => star.data).find((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.01) ??
                         // @ts-ignore
@@ -95,7 +97,8 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             const vertices = delaunay.triangles.map(t => {
                 return {
                     vertex: [delaunay.vertices[delaunay.edges[t[0]][0]], delaunay.vertices[delaunay.edges[t[1]][0]], delaunay.vertices[delaunay.edges[t[2]][0]]],
-                    color: [points.get(delaunay.vertices[delaunay.edges[t[0]][0]])![0], points.get(delaunay.vertices[delaunay.edges[t[1]][0]])![0], points.get(delaunay.vertices[delaunay.edges[t[2]][0]])![0]]
+                    color: [points.get(delaunay.vertices[delaunay.edges[t[0]][0]])![0], points.get(delaunay.vertices[delaunay.edges[t[1]][0]])![0], points.get(delaunay.vertices[delaunay.edges[t[2]][0]])![0]],
+                    indices: [delaunay.edges[t[0]][0], delaunay.edges[t[1]][0], delaunay.edges[t[2]][0]],
                 };
             });
             delaunay.vertices.forEach(vertex => {
@@ -109,43 +112,60 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
 
         const remesh = remeshAsDelaunay();
 
-        const addToMesh = (data?: {vertex: [[number, number, number], [number, number, number], [number, number, number]], color: [[number, number, number], [number, number, number], [number, number, number]]}) => {
+        const indexSet = [] as [number, number, number][];
+        const addToMesh = (data?: {vertex: [[number, number, number], [number, number, number], [number, number, number]], color: [[number, number, number], [number, number, number], [number, number, number]], indices: [number, number, number]}) => {
             if (!data) {
                 return;
             }
 
-            const {vertex: vertexData, color: colorData} = data;
+            const {vertex: vertexData, color: colorData, indices: indexData} = data;
 
-            // initial center index
-            let startingIndex = planetGeometryData.index.length;
+            if (planetGeometryData.navmesh) {
+                const handleVertex = (p: [number, number, number], i: number) => {
+                    const index = indexSet.findIndex((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.0001)
+                    if (index >= 0) {
+                        planetGeometryData.index.push(index);
+                    } else {
+                        planetGeometryData.position.push.apply(planetGeometryData.position, p);
+                        planetGeometryData.index.push(indexSet.length);
+                        indexSet.push(p);
+                    }
+                };
+                handleVertex(vertexData[0], indexData[0]);
+                handleVertex(vertexData[1], indexData[1]);
+                handleVertex(vertexData[2], indexData[2]);
+            } else {
+                // initial center index
+                let startingIndex = planetGeometryData.index.length;
 
-            const normal = DelaunayGraph.crossProduct(
-                DelaunayGraph.normalize(DelaunayGraph.subtract(vertexData[1], vertexData[0])),
-                DelaunayGraph.normalize(DelaunayGraph.subtract(vertexData[2], vertexData[0]))
-            );
+                const normal = DelaunayGraph.crossProduct(
+                    DelaunayGraph.normalize(DelaunayGraph.subtract(vertexData[1], vertexData[0])),
+                    DelaunayGraph.normalize(DelaunayGraph.subtract(vertexData[2], vertexData[0]))
+                );
 
-            // triangle 1
+                // triangle 1
 
-            // startingIndex 0
-            planetGeometryData.position.push.apply(planetGeometryData.position, vertexData[0]);
-            planetGeometryData.color.push.apply(planetGeometryData.color, colorData[0]);
-            planetGeometryData.normal.push.apply(planetGeometryData.normal, normal);
+                // startingIndex 0
+                planetGeometryData.position.push.apply(planetGeometryData.position, vertexData[0]);
+                planetGeometryData.color.push.apply(planetGeometryData.color, colorData[0]);
+                planetGeometryData.normal.push.apply(planetGeometryData.normal, normal);
 
-            // startingIndex 1
-            planetGeometryData.position.push.apply(planetGeometryData.position, vertexData[1]);
-            planetGeometryData.color.push.apply(planetGeometryData.color, colorData[1]);
-            planetGeometryData.normal.push.apply(planetGeometryData.normal, normal);
+                // startingIndex 1
+                planetGeometryData.position.push.apply(planetGeometryData.position, vertexData[1]);
+                planetGeometryData.color.push.apply(planetGeometryData.color, colorData[1]);
+                planetGeometryData.normal.push.apply(planetGeometryData.normal, normal);
 
-            // startingIndex 2
-            planetGeometryData.position.push.apply(planetGeometryData.position, vertexData[2]);
-            planetGeometryData.color.push.apply(planetGeometryData.color, colorData[2]);
-            planetGeometryData.normal.push.apply(planetGeometryData.normal, normal);
+                // startingIndex 2
+                planetGeometryData.position.push.apply(planetGeometryData.position, vertexData[2]);
+                planetGeometryData.color.push.apply(planetGeometryData.color, colorData[2]);
+                planetGeometryData.normal.push.apply(planetGeometryData.normal, normal);
 
-            // indices
-            planetGeometryData.index.push(startingIndex, startingIndex + 1, startingIndex + 2);
+                // indices
+                planetGeometryData.index.push(startingIndex, startingIndex + 1, startingIndex + 2);
 
-            if (breakApart && startingIndex >= 8000 && !planetGeometryData.navmesh) {
-                meshes.push(makeMesh());
+                if (breakApart && startingIndex >= 8000 && !planetGeometryData.navmesh) {
+                    meshes.push(makeMesh());
+                }
             }
         };
 
@@ -164,7 +184,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             // handle nav mesh
             planetGeometryData.collidable = false;
             planetGeometryData.navmesh = true;
-            const navmesh = remesh.map(v => v.vertex.some(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) < 0.99) ? v : null);
+            const navmesh = remesh.map(v => v.vertex.some(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) > 0.99) ? v : null);
             navmesh.forEach(addToMesh);
             meshes.push(makeMesh());
         } else {
@@ -173,7 +193,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
         }
     }
     const colors = planetVoronoiCells.map((x) => {
-        const color: [number, number, number] = game.seedRandom.double() > 0.33 ? [0.33, 0.33, 1] : [0.33, 1, 0.33];
+        const color: [number, number, number] = game.seedRandom.double() > 0.20 ? [0.33, 0.33, 1] : [0.33, 1, 0.33];
         return [x, color] as [VoronoiCell, [number, number, number]];
     });
     const modifyWaterVertexHeight = (vertex: [number, number, number], v: VoronoiCell, colorMap: Map<VoronoiCell, [number, number, number]>) => {
@@ -722,20 +742,32 @@ export const generatePlanetGltf = async (data: IGameMesh): Promise<Uint8Array> =
         .setArray(new Float32Array(data.attributes.find(x => x.id === "aPosition")!.buffer))
         .setType(Accessor.Type.VEC3)
         .setBuffer(buffer);
-    const colorAccessor = doc.createAccessor("aColor")
-        .setArray(new Float32Array(data.attributes.find(x => x.id === "aColor")!.buffer))
-        .setType(Accessor.Type.VEC3)
-        .setBuffer(buffer);
-    const normalAccessor = doc.createAccessor("aNormal")
-        .setArray(new Float32Array(data.attributes.find(x => x.id === "aNormal")!.buffer))
-        .setType(Accessor.Type.VEC3)
-        .setBuffer(buffer);
+
+    let colorAccessor: Accessor | null = null;
+    if (data.attributes.find(x => x.id === "aColor")) {
+        colorAccessor = doc.createAccessor("aColor")
+            .setArray(new Float32Array(data.attributes.find(x => x.id === "aColor")!.buffer))
+            .setType(Accessor.Type.VEC3)
+            .setBuffer(buffer);
+    }
+
+    let normalAccessor: Accessor | null = null;
+    if (data.attributes.find(x => x.id === "aNormal")) {
+        normalAccessor = doc.createAccessor("aNormal")
+            .setArray(new Float32Array(data.attributes.find(x => x.id === "aNormal")!.buffer))
+            .setType(Accessor.Type.VEC3)
+            .setBuffer(buffer);
+    }
     const primitive = doc.createPrimitive()
         .setIndices(indexAccessor)
-        .setAttribute("POSITION", positionAccessor)
-        .setAttribute("COLOR_0", colorAccessor)
-        .setAttribute("NORMAL", normalAccessor)
-        .setMaterial(doc.createMaterial().setDoubleSided(true));
+        .setAttribute("POSITION", positionAccessor);
+    if (colorAccessor) {
+        primitive.setAttribute("COLOR_0", colorAccessor);
+    }
+    if (normalAccessor) {
+        primitive.setAttribute("NORMAL", normalAccessor);
+    }
+    primitive.setMaterial(doc.createMaterial().setDoubleSided(true));
     const mesh = doc.createMesh("planet");
     mesh.addPrimitive(primitive);
     node.setMesh(mesh);
