@@ -38,94 +38,100 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
     };
 
     const generateMesh = (voronoiCells: VoronoiCell[], colors: [VoronoiCell, [number, number, number]][]) => {
-        const addToMesh = (v: VoronoiCell | null, index: number) => {
-            if (!v) {
+        const remeshAsDelaunay = () => {
+            const game = new Game();
+            const delaunay = new DelaunayGraph(game);
+            delaunay.initialize();
+            const voronoiTree = new VoronoiTree(game);
+            voronoiTree.defaultRecursionNodeLevels = [30, 5, 5, 5];
+            const points = new Map<[number, number, number], [[number, number, number], number]>();
+            const colorMap = new Map<VoronoiCell, [number, number, number]>(colors);
+
+            // convert voronoi vertices into delaunay
+            for (const v of voronoiCells) {
+                const handlePoint = (point: [number, number, number]) => {
+                    const p = DelaunayGraph.normalize(point);
+                    const height = DelaunayGraph.distanceFormula([0, 0, 0], point);
+                    // @ts-ignore
+                    const nearestPoint = Array.from(voronoiTree.listItems(p, Math.PI / 32)).map(star => star.data).find((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.000001);
+                    // update height with max value
+                    if (nearestPoint && points.get(nearestPoint)[1] < height) {
+                        points.set(nearestPoint, [colorMap.get(v)!, height]);
+                    }
+                    if (!nearestPoint) {
+                        delaunay.incrementalInsert(p);
+                        points.set(p, [colorMap.get(v)!, height]);
+                        const star = new Star(game);
+                        star.position = Quaternion.fromBetweenVectors([0, 0, 1], p);
+                        // @ts-ignore
+                        star.data = p;
+                        voronoiTree.addItem(star);
+                    }
+                    return;
+                };
+                v.vertices.forEach(handlePoint);
+                handlePoint(v.centroid);
+            }
+
+            const firstFourPoints = delaunay.vertices.slice(0, 4);
+            const firstFourPointsPoints = firstFourPoints.map(pp => Array.from(points.keys()).reduce((acc, v) => VoronoiGraph.angularDistance(pp, v, 1) < VoronoiGraph.angularDistance(pp, acc, 1) ? v : acc));
+            firstFourPointsPoints.forEach((pp, index) => {
+                const data = points.get(pp)!;
+                points.set(firstFourPoints[index], data);
+            });
+
+            // extract triangles
+            const vertices = delaunay.triangles.map(t => {
+                return {
+                    vertex: [delaunay.vertices[delaunay.edges[t[0]][0]], delaunay.vertices[delaunay.edges[t[1]][0]], delaunay.vertices[delaunay.edges[t[2]][0]]],
+                    color: [points.get(delaunay.vertices[delaunay.edges[t[0]][0]])![0], points.get(delaunay.vertices[delaunay.edges[t[1]][0]])![0], points.get(delaunay.vertices[delaunay.edges[t[2]][0]])![0]]
+                };
+            });
+            delaunay.vertices.forEach(vertex => {
+                const height = points.get(vertex)[1];
+                vertex[0] *= height;
+                vertex[1] *= height;
+                vertex[2] *= height;
+            })
+            return vertices;
+        };
+
+        const remesh = remeshAsDelaunay();
+
+        const addToMesh = (data?: {vertex: [[number, number, number], [number, number, number], [number, number, number]], color: [[number, number, number], [number, number, number], [number, number, number]]}) => {
+            if (!data) {
                 return;
             }
 
-            // color of voronoi tile
-            const color: [number, number, number] = colors[index][1];
+            const {vertex: vertexData, color: colorData} = data;
 
             // initial center index
             let startingIndex = planetGeometryData.index.length;
 
-            for (let i = 0; i < v.vertices.length; i++) {
-                // vertex data
-                const a = v.vertices[i % v.vertices.length];
-                const b = v.vertices[(i + 1) % v.vertices.length];
+            const normal = DelaunayGraph.crossProduct(
+                DelaunayGraph.normalize(DelaunayGraph.subtract(vertexData[1], vertexData[0])),
+                DelaunayGraph.normalize(DelaunayGraph.subtract(vertexData[2], vertexData[0]))
+            );
 
-                const bottomA = DelaunayGraph.normalize(a);
-                bottomA[0] *= 0.9;
-                bottomA[1] *= 0.9;
-                bottomA[2] *= 0.9;
-                const bottomB = DelaunayGraph.normalize(b);
-                bottomB[0] *= 0.9;
-                bottomB[1] *= 0.9;
-                bottomB[2] *= 0.9;
+            // triangle 1
 
-                // triangle 1
+            // startingIndex 0
+            planetGeometryData.position.push.apply(planetGeometryData.position, vertexData[0]);
+            planetGeometryData.color.push.apply(planetGeometryData.color, colorData[0]);
+            planetGeometryData.normal.push.apply(planetGeometryData.normal, normal);
 
-                // startingIndex 0
-                planetGeometryData.position.push.apply(planetGeometryData.position, v.centroid);
-                planetGeometryData.color.push.apply(planetGeometryData.color, color);
-                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(v.centroid));
+            // startingIndex 1
+            planetGeometryData.position.push.apply(planetGeometryData.position, vertexData[1]);
+            planetGeometryData.color.push.apply(planetGeometryData.color, colorData[1]);
+            planetGeometryData.normal.push.apply(planetGeometryData.normal, normal);
 
-                // startingIndex 1
-                planetGeometryData.position.push.apply(planetGeometryData.position, a);
-                planetGeometryData.color.push.apply(planetGeometryData.color, color);
-                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(a));
+            // startingIndex 2
+            planetGeometryData.position.push.apply(planetGeometryData.position, vertexData[2]);
+            planetGeometryData.color.push.apply(planetGeometryData.color, colorData[2]);
+            planetGeometryData.normal.push.apply(planetGeometryData.normal, normal);
 
-                // startingIndex 2
-                planetGeometryData.position.push.apply(planetGeometryData.position, b);
-                planetGeometryData.color.push.apply(planetGeometryData.color, color);
-                planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(b));
-
-                if (!planetGeometryData.navmesh) {
-                    // triangle 2
-
-                    // starting index 3
-                    planetGeometryData.position.push.apply(planetGeometryData.position, a);
-                    planetGeometryData.color.push.apply(planetGeometryData.color, color);
-                    planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
-
-                    // startingIndex 4
-                    planetGeometryData.position.push.apply(planetGeometryData.position, bottomB);
-                    planetGeometryData.color.push.apply(planetGeometryData.color, color);
-                    planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
-
-                    // startingIndex 5
-                    planetGeometryData.position.push.apply(planetGeometryData.position, b);
-                    planetGeometryData.color.push.apply(planetGeometryData.color, color);
-                    planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
-
-                    // triangle 3
-
-                    // starting index 6
-                    planetGeometryData.position.push.apply(planetGeometryData.position, a);
-                    planetGeometryData.color.push.apply(planetGeometryData.color, color);
-                    planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
-
-                    // startingIndex 7
-                    planetGeometryData.position.push.apply(planetGeometryData.position, bottomA);
-                    planetGeometryData.color.push.apply(planetGeometryData.color, color);
-                    planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
-
-                    // startingIndex 8
-                    planetGeometryData.position.push.apply(planetGeometryData.position, bottomB);
-                    planetGeometryData.color.push.apply(planetGeometryData.color, color);
-                    planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(DelaunayGraph.crossProduct(DelaunayGraph.normalize(DelaunayGraph.subtract(b, a)), a)));
-                }
-
-                // indices
-                planetGeometryData.index.push(startingIndex, startingIndex + 1, startingIndex + 2);
-                if (!planetGeometryData.navmesh) {
-                    planetGeometryData.index.push(startingIndex + 3, startingIndex + 4, startingIndex + 5);
-                    planetGeometryData.index.push(startingIndex + 6, startingIndex + 7, startingIndex + 8);
-                }
-
-                // update starting index
-                startingIndex = planetGeometryData.index.length;
-            }
+            // indices
+            planetGeometryData.index.push(startingIndex, startingIndex + 1, startingIndex + 2);
 
             if (breakApart && startingIndex >= 8000 && !planetGeometryData.navmesh) {
                 meshes.push(makeMesh());
@@ -134,24 +140,24 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
 
         if (breakApart) {
             // handle water
-            const water = voronoiCells.map(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) < 0.97 ? v : null);
+            const water = remesh.map(v => v.vertex.some(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) < 0.97) ? v : null);
             water.forEach(addToMesh);
             meshes.push(makeMesh());
 
             // handle collidable land
             planetGeometryData.collidable = true;
-            const land = voronoiCells.map(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) >= 0.97 ? v : null);
+            const land = remesh.map(v => !v.vertex.some(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) < 0.97) ? v : null);
             land.forEach(addToMesh);
             meshes.push(makeMesh());
 
             // handle nav mesh
             planetGeometryData.collidable = false;
             planetGeometryData.navmesh = true;
-            const navmesh = voronoiCells.map(v => DelaunayGraph.distanceFormula([0, 0, 0], v.centroid) >= 0.99 ? v : null);
+            const navmesh = remesh.map(v => v.vertex.some(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) < 0.99) ? v : null);
             navmesh.forEach(addToMesh);
             meshes.push(makeMesh());
         } else {
-            voronoiCells.forEach(addToMesh);
+            remesh.forEach(addToMesh);
             meshes.push(makeMesh());
         }
     }
