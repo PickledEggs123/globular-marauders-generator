@@ -50,16 +50,27 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             // convert voronoi vertices into delaunay
             for (const v of voronoiCells) {
                 const handlePoint = (point: [number, number, number]) => {
-                    const p = DelaunayGraph.normalize(point);
+                    let p = DelaunayGraph.normalize(point);
                     const height = DelaunayGraph.distanceFormula([0, 0, 0], point);
                     // @ts-ignore
-                    const nearestPoint = Array.from(voronoiTree.listItems(p, Math.PI / 32)).map(star => star.data).find((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.000001);
+                    const nearestPoint = Array.from(voronoiTree.listItems(p, Math.PI / 32)).map(star => star.data).find((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.000001) ??
+                        // @ts-ignore
+                        Array.from(voronoiTree.listItems(p, Math.PI / 16)).map(star => star.data).find((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.0001) ??
+                        // @ts-ignore
+                        Array.from(voronoiTree.listItems(p, Math.PI / 8)).map(star => star.data).find((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.01) ??
+                        // @ts-ignore
+                        Array.from(voronoiTree.listItems(p, Math.PI / 4)).map(star => star.data).find((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.1);
                     // update height with max value
                     if (nearestPoint && points.get(nearestPoint)[1] < height) {
                         points.set(nearestPoint, [colorMap.get(v)!, height]);
                     }
                     if (!nearestPoint) {
-                        delaunay.incrementalInsert(p);
+                        delaunay.incrementalInsert(p, 0, true);
+                        const lastPoint = delaunay.vertices.slice(-1)[0];
+                        if (DelaunayGraph.distanceFormula(p, lastPoint) > 0.00001) {
+                            handlePoint(lastPoint);
+                            return;
+                        }
                         points.set(p, [colorMap.get(v)!, height]);
                         const star = new Star(game);
                         star.position = Quaternion.fromBetweenVectors([0, 0, 1], p);
@@ -162,7 +173,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
         }
     }
     const colors = planetVoronoiCells.map((x) => {
-        const color: [number, number, number] = game.seedRandom.double() > 0.30 ? [0.33, 0.33, 1] : [0.33, 1, 0.33];
+        const color: [number, number, number] = game.seedRandom.double() > 0.33 ? [0.33, 0.33, 1] : [0.33, 1, 0.33];
         return [x, color] as [VoronoiCell, [number, number, number]];
     });
     const modifyWaterVertexHeight = (vertex: [number, number, number], v: VoronoiCell, colorMap: Map<VoronoiCell, [number, number, number]>) => {
