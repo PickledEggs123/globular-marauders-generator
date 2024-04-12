@@ -10,6 +10,7 @@ import {
 } from "@pickledeggs123/globular-marauders-game/lib/src/VoronoiTree";
 import * as Quaternion from "quaternion";
 import seedrandom from "seedrandom";
+import delaunayMesh from "./output.delaunay.json";
 
 export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, planetVoronoiCells: VoronoiCell[], biomeVoronoiCells: VoronoiCell[] | undefined = undefined, areaVoronoiCells: VoronoiCell[] | undefined = undefined, walkingVoronoiCells: VoronoiCell[] | undefined = undefined, breakApart: boolean) => {
     let planetGeometryData = {position: [] as number[], color: [] as number[], normal: [] as number[], index: [] as number[], collidable: false as boolean, navmesh: false as boolean};
@@ -43,17 +44,16 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
         const remeshAsDelaunay = () => {
             const game = new Game();
             const delaunay = new DelaunayGraph(game);
-            delaunay.initialize();
+            delaunay.triangles = delaunayMesh.triangles as number[][];
+            delaunay.edges = delaunayMesh.edges as [number, number][];
+            delaunay.vertices = delaunayMesh.vertices as [number, number, number][];
             const voronoiTree = new VoronoiTree(game);
             voronoiTree.defaultRecursionNodeLevels = [30, 5, 5, 5];
             const points = new Map<[number, number, number], [[number, number, number], number]>();
             const colorMap = new Map<VoronoiCell, [number, number, number]>(colors);
 
             // build blank delaunay mesh quickly
-            const vCount = voronoiCells.reduce((acc, v) => v.vertices.length + 1 + acc, 0);
-            for (let i = 0; i < vCount; i++) {
-                delaunay.incrementalInsert(undefined, 0, true);
-                const lastPoint = delaunay.vertices.slice(-1)[0];
+            for (const lastPoint of delaunay.vertices) {
                 const star = new Star(game);
                 star.position = Quaternion.fromBetweenVectors([0, 0, 1], lastPoint);
                 // @ts-ignore

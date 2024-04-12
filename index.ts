@@ -5,6 +5,8 @@ import path from "path";
 import {generatePlanet, generatePlanetGltf, generatePlanetSteps} from "./helpers";
 import {IGameMesh} from "@pickledeggs123/globular-marauders-game/lib/src/Interface";
 import {NodeIO, Primitive} from '@gltf-transform/core';
+import {DelaunayGraph} from "@pickledeggs123/globular-marauders-game/lib/src/Graph";
+import {Game} from "@pickledeggs123/globular-marauders-game/lib/src";
 
 program.command("mesh")
     .description("generate a planet mesh")
@@ -178,6 +180,26 @@ program.command("embed")
         } else {
             throw new Error("Can only embed ['Planet'] image");
         }
+    });
+
+program.command("delaunay")
+    .description("generate a delaunay sphere")
+    .argument("destination", "the input file")
+    .action(async (destination) => {
+        const delaunay = new DelaunayGraph(new Game());
+        delaunay.initialize();
+        delaunay.triangleOctree.depth = -3;
+        delaunay.edgeOctree.depth = -3;
+
+        for (let i = 0; i < 20000; i++) {
+            delaunay.incrementalInsert(undefined, 0, true);
+        }
+
+        await fs.promises.writeFile(destination, JSON.stringify({
+            triangles: delaunay.triangles,
+            edges: delaunay.edges,
+            vertices: delaunay.vertices,
+        }));
     });
 
 program.parse();
