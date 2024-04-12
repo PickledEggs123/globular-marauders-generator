@@ -11,6 +11,7 @@
     "run-image-planet": "npm run build && node dist/index.js image planet output.mesh",
     "run-embed-image-into-mesh-planet": "npm run build && node dist/index.js embed planet output.mesh",
     "run-mesh-planet-gltf": "npm run build && node dist/index.js mesh-gltf planet output.mesh.glb",
+    "run-mesh-planet-gltf-is-slow": "npm run build && npx clinic flame -- node dist/index.js mesh-gltf planet output.mesh.glb",
     "run-delaunay": "npm run build && node dist/index.js delaunay output.delaunay.json",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

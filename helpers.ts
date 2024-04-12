@@ -123,6 +123,9 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
         const remesh = remeshAsDelaunay();
 
         const indexSet = [] as [number, number, number][];
+        const indexVoronoiGame = new Game();
+        const indexVoronoiTree = new VoronoiTree(indexVoronoiGame);
+        indexVoronoiTree.defaultRecursionNodeLevels = [30, 5, 5, 5];
         const addToMesh = (data?: {vertex: [[number, number, number], [number, number, number], [number, number, number]], color: [[number, number, number], [number, number, number], [number, number, number]], indices: [number, number, number]}) => {
             if (!data) {
                 return;
@@ -132,13 +135,20 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
 
             if (planetGeometryData.navmesh) {
                 const handleVertex = (p: [number, number, number], i: number) => {
-                    const index = indexSet.findIndex((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.0001)
+                    // @ts-ignore
+                    const voronoiTreeSearch = (Array.from(indexVoronoiTree.listItems(p, 0.0001)).map((s) => s.data).find((v) => VoronoiGraph.angularDistance(p, v[0], 1) < 0.0001) ?? [[0, 0, 0], -1])[1];
+                    const index = voronoiTreeSearch >= 0 ? voronoiTreeSearch : indexSet.findIndex((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.0001);
                     if (index >= 0) {
                         planetGeometryData.index.push(index);
                     } else {
                         planetGeometryData.position.push.apply(planetGeometryData.position, p);
                         planetGeometryData.index.push(indexSet.length);
                         indexSet.push(p);
+                        const star = new Star(indexVoronoiGame);
+                        star.position = Quaternion.fromBetweenVectors([0, 0, 1], p);
+                        // @ts-ignore
+                        star.data = [p, index];
+                        indexVoronoiTree.addItem(star);
                     }
                 };
                 handleVertex(vertexData[0], indexData[0]);
