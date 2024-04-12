@@ -49,36 +49,44 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             const points = new Map<[number, number, number], [[number, number, number], number]>();
             const colorMap = new Map<VoronoiCell, [number, number, number]>(colors);
 
-            // convert voronoi vertices into delaunay
+            // build blank delaunay mesh quickly
+            const vCount = voronoiCells.reduce((acc, v) => v.vertices.length + 1 + acc, 0);
+            for (let i = 0; i < vCount; i++) {
+                delaunay.incrementalInsert(undefined, 0, true);
+                const lastPoint = delaunay.vertices.slice(-1)[0];
+                const star = new Star(game);
+                star.position = Quaternion.fromBetweenVectors([0, 0, 1], lastPoint);
+                // @ts-ignore
+                star.data = lastPoint;
+                voronoiTree.addItem(star);
+            }
+
+            // convert voronoi vertices into
             for (const v of voronoiCells) {
                 const handlePoint = (point: [number, number, number]) => {
                     let p = DelaunayGraph.normalize(point);
                     const height = DelaunayGraph.distanceFormula([0, 0, 0], point);
                     // @ts-ignore
-                    const nearestPoint = Array.from(voronoiTree.listItems(p, Math.PI / 32)).map(star => star.data).find((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.0001) ??
+                    let nearestPoints = Array.from(voronoiTree.listItems(p, 0.0001)).map(star => star.data).filter((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.0001);
+                    if (nearestPoints.length < 1) {
                         // @ts-ignore
-                        Array.from(voronoiTree.listItems(p, Math.PI / 16)).map(star => star.data).find((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.001) ??
-                        // @ts-ignore
-                        Array.from(voronoiTree.listItems(p, Math.PI / 8)).map(star => star.data).find((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.01) ??
-                        // @ts-ignore
-                        Array.from(voronoiTree.listItems(p, Math.PI / 4)).map(star => star.data).find((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.1);
-                    // update height with max value
-                    if (nearestPoint && points.get(nearestPoint)[1] < height) {
-                        points.set(nearestPoint, [colorMap.get(v)!, height]);
+                        nearestPoints = Array.from(voronoiTree.listItems(p, 0.001)).map(star => star.data).filter((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.001)
                     }
-                    if (!nearestPoint) {
-                        delaunay.incrementalInsert(p, 0, true);
-                        const lastPoint = delaunay.vertices.slice(-1)[0];
-                        if (DelaunayGraph.distanceFormula(p, lastPoint) > 0.00001) {
-                            handlePoint(lastPoint);
-                            return;
-                        }
-                        points.set(p, [colorMap.get(v)!, height]);
-                        const star = new Star(game);
-                        star.position = Quaternion.fromBetweenVectors([0, 0, 1], p);
+                    if (nearestPoints.length < 1) {
                         // @ts-ignore
-                        star.data = p;
-                        voronoiTree.addItem(star);
+                        nearestPoints = Array.from(voronoiTree.listItems(p, 0.01)).map(star => star.data).filter((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.01)
+                    }
+                    if (nearestPoints.length < 1) {
+                        // @ts-ignore
+                        nearestPoints = Array.from(voronoiTree.listItems(p, 0.1)).map(star => star.data).filter((v) => VoronoiGraph.angularDistance(p, v, 1) < 0.1)
+                    }
+                    for (const nearestPoint of nearestPoints) {
+                        if (points.has(nearestPoint) && points.get(nearestPoint)![1] < height) {
+                            points.set(nearestPoint, [colorMap.get(v)!, height]);
+                        }
+                        if (!points.has(nearestPoint)) {
+                            points.set(nearestPoint, [colorMap.get(v)!, height]);
+                        }
                     }
                     return;
                 };
@@ -95,18 +103,20 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
 
             // extract triangles
             const vertices = delaunay.triangles.map(t => {
+                const colorItem = points.get(delaunay.vertices[delaunay.edges[t[0]][0]]) ?? points.get(delaunay.vertices[delaunay.edges[t[1]][0]]) ?? points.get(delaunay.vertices[delaunay.edges[t[2]][0]]) ?? Array.from(points.values())[0]!;
+
                 return {
                     vertex: [delaunay.vertices[delaunay.edges[t[0]][0]], delaunay.vertices[delaunay.edges[t[1]][0]], delaunay.vertices[delaunay.edges[t[2]][0]]],
-                    color: [points.get(delaunay.vertices[delaunay.edges[t[0]][0]])![0], points.get(delaunay.vertices[delaunay.edges[t[1]][0]])![0], points.get(delaunay.vertices[delaunay.edges[t[2]][0]])![0]],
+                    color: [(points.get(delaunay.vertices[delaunay.edges[t[0]][0]]) ?? colorItem)[0], (points.get(delaunay.vertices[delaunay.edges[t[1]][0]]) ?? colorItem)[0], (points.get(delaunay.vertices[delaunay.edges[t[2]][0]]) ?? colorItem)[0]],
                     indices: [delaunay.edges[t[0]][0], delaunay.edges[t[1]][0], delaunay.edges[t[2]][0]],
                 };
             });
             delaunay.vertices.forEach(vertex => {
-                const height = points.get(vertex)[1];
+                const height = (points.get(vertex) ?? [0, 1])[1];
                 vertex[0] *= height;
                 vertex[1] *= height;
                 vertex[2] *= height;
-            })
+            });
             return vertices;
         };
 
