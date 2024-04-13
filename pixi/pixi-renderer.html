@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
-    <script src="https://pixijs.download/release/pixi.js"></script>
+    <script src="https://pixijs.download/v7.4.2/pixi.js"></script>
     <style>
         body, canvas {
             margin: 0;
@@ -38,7 +38,7 @@
                     vColor = aColor;
                     vNormal = aNormal;
 
-                    gl_Position = vec4(aPosition, 1.0);
+                    gl_Position = vec4(aPosition * 0.95, 1.0);
                 }
             `;
         const planetFragmentShader = `
@@ -48,7 +48,7 @@
                 varying vec3 vNormal;
 
                 void main() {
-                    gl_FragColor = vec4(vColor * (0.3 + max(dot(vNormal, vec3(0.0, 0.0, -1.0)), 0.0) * 0.7), 1.0);
+                    gl_FragColor = vec4(vColor * (0.3 + abs(dot(vNormal, vec3(0.0, 0.0, -1.0))) * 0.7), 1.0);
                 }
             `;
         const planetProgram = new PIXI.Program(planetVertexShader, planetFragmentShader);
@@ -56,6 +56,7 @@
         const shader = new PIXI.Shader(planetProgram, {});
         const state = PIXI.State.for2d();
         state.depthTest = true;
+        state.culling = false;
         const mesh = new PIXI.Mesh(planetGeometry, shader, state);
 
         app.stage.addChild(mesh);
