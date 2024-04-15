@@ -29,7 +29,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
 
     const makeMesh = () => {
         const mesh = {
-            attributes: planetGeometryData.navmesh ? [{
+            attributes: planetGeometryData.navmesh || planetGeometryData.ocean || planetGeometryData.oceanNavmesh ? [{
                 id: "aPosition", buffer: planetGeometryData.position, size: 3
             }] : [{
                 id: "aPosition", buffer: planetGeometryData.position, size: 3
@@ -202,20 +202,20 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
 
         if (breakApart) {
             // handle water
-            const water = remesh.map(v => v.vertex.every(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) < 0.99) ? v : null);
+            const water = remesh.map(v => v.vertex.some(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) < 0.99) ? v : null);
             water.forEach(addToMesh);
             meshes.push(makeMesh());
 
             // handle collidable land
             planetGeometryData.collidable = true;
-            const land = remesh.map(v => !v.vertex.every(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) < 0.99) ? v : null);
+            const land = remesh.map(v => !v.vertex.some(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) < 0.99) ? v : null);
             land.forEach(addToMesh);
             meshes.push(makeMesh());
 
             // handle nav mesh
             planetGeometryData.collidable = false;
             planetGeometryData.navmesh = true;
-            const navmesh = remesh.map(v => v.vertex.every(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) > 0.99) ? v : null);
+            const navmesh = remesh.map(v => !v.vertex.some(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) < 0.99) ? v : null);
             navmesh.forEach(addToMesh);
             meshes.push(makeMesh());
 
@@ -223,16 +223,17 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             planetGeometryData.navmesh = false;
             planetGeometryData.ocean = true;
             planetGeometryData.oceanNavmesh = true;
-            let ocean = remesh.map(v => v.vertex.every(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) < 0.99) ? v : null);
+            let ocean = remesh.map(v => v.vertex.some(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) < 0.99) ? v : null);
             ocean = ocean.map((d) => {
                 if (!d) {
                     return d;
                 }
 
-                return {
+                let o = {
                     ...d,
                     vertex: d.vertex.map(v => DelaunayGraph.normalize(v)),
                 };
+                return o;
             });
             ocean.forEach(addToMesh);
             meshes.push(makeMesh());
@@ -818,7 +819,7 @@ export const generatePlanetGltf = async (data: IGameMesh, isOcean: boolean): Pro
     }
     const material = doc.createMaterial().setDoubleSided(true);
     if (isOcean) {
-        material.setBaseColorFactor([0.3, 0.3, 1.0, 0.5]).setAlphaMode("BLEND").setAlpha(0.5);
+        material.setBaseColorFactor([0.3, 0.3, 1.0, 0.8]).setAlphaMode("BLEND").setAlpha(0.8);
     }
     primitive.setMaterial(material);
     const mesh = doc.createMesh("planet");
