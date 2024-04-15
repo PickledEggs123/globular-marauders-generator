@@ -223,7 +223,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             planetGeometryData.navmesh = false;
             planetGeometryData.ocean = true;
             planetGeometryData.oceanNavmesh = true;
-            let ocean = remesh.map(v => v.vertex.every(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) > 0.99) ? v : null);
+            let ocean = remesh.map(v => v.vertex.every(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) < 0.99) ? v : null);
             ocean = ocean.map((d) => {
                 if (!d) {
                     return d;
