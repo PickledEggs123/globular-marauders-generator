@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@gltf-transform/core": "^2.1.7",
-    "@pickledeggs123/globular-marauders-game": "^0.2.188",
+    "@pickledeggs123/globular-marauders-game": "^0.2.190",
     "commander": "^9.0.0",
     "puppeteer": "^13.3.2",
     "seedrandom": "^3.0.5"
