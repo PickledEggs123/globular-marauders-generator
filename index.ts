@@ -102,6 +102,7 @@ program.command("mesh-gltf")
         }
     });
 
+
 program.command("mesh-gltf-step")
     .description("generate a planet mesh with sub steps")
     .argument("type", "the type of data to create")
