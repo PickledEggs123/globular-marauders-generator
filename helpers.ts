@@ -133,10 +133,16 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
 
         const remesh = remeshAsDelaunay();
 
-        const indexSet = [] as [number, number, number][];
-        const indexVoronoiGame = new Game();
-        const indexVoronoiTree = new VoronoiTree(indexVoronoiGame);
+        let indexSet = [] as [number, number, number][];
+        let indexVoronoiGame = new Game();
+        let indexVoronoiTree = new VoronoiTree(indexVoronoiGame);
         indexVoronoiTree.defaultRecursionNodeLevels = [30, 5, 5, 5];
+        const resetIndexSet = () => {
+            indexSet = [] as [number, number, number][];
+            indexVoronoiGame = new Game();
+            indexVoronoiTree = new VoronoiTree(indexVoronoiGame);
+            indexVoronoiTree.defaultRecursionNodeLevels = [30, 5, 5, 5];
+        };
         const addToMesh = (data?: {vertex: [[number, number, number], [number, number, number], [number, number, number]], color: [[number, number, number], [number, number, number], [number, number, number]], indices: [number, number, number]}) => {
             if (!data) {
                 return;
@@ -218,6 +224,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             const navmesh = remesh.map(v => !v.vertex.some(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) < 0.99) ? v : null);
             navmesh.forEach(addToMesh);
             meshes.push(makeMesh());
+            resetIndexSet();
 
             planetGeometryData.collidable = false;
             planetGeometryData.navmesh = false;
@@ -237,6 +244,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             });
             ocean.forEach(addToMesh);
             meshes.push(makeMesh());
+            resetIndexSet();
         } else {
             remesh.forEach(addToMesh);
             meshes.push(makeMesh());
