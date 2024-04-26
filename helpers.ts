@@ -334,7 +334,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 portPoint[1] /= inputToPortPoints.length;
                 portPoint[2] /= inputToPortPoints.length;
 
-                const initialPortDirection = bestTriangle.vertex.find((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.97 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 0.99);
+                const initialPortDirection = bestTriangle.vertex.find((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.93 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 0.99);
                 const portDirection = DelaunayGraph.normalize(initialPortDirection);
                 buildings.push({
                     type: "PORT",
