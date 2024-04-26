@@ -306,9 +306,9 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             }
             const largestShore = shoreSets.reduce((acc, s) => acc === null || (acc.size < s.size && s.size < 100) ? s : acc, null);
             shore = shore.map((v, i) => largestShore.has(i) ? v : null);
-            shore.forEach(addToMesh);
-            meshes.push(makeMesh());
-            resetIndexSet();
+            // shore.forEach(addToMesh);
+            // meshes.push(makeMesh());
+            // resetIndexSet();
 
             // build port on shore
             const bestTriangle = shore.filter(x =>
