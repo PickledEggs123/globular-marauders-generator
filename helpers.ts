@@ -11,6 +11,17 @@ import {
 import * as Quaternion from "quaternion";
 import seedrandom from "seedrandom";
 import delaunayMesh from "./output.delaunay.json";
+import {NearestNeighbor} from "./NearestNeighbor";
+
+export interface IGameSpawnPoint {
+    point: [number, number, number];
+}
+
+export interface IGameBuilding {
+    type: "PORT";
+    point: [number, number, number];
+    lookAt: [number, number, number];
+}
 
 export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, planetVoronoiCells: VoronoiCell[], biomeVoronoiCells: VoronoiCell[] | undefined = undefined, areaVoronoiCells: VoronoiCell[] | undefined = undefined, walkingVoronoiCells: VoronoiCell[] | undefined = undefined, breakApart: boolean) => {
     let planetGeometryData = {
@@ -22,10 +33,13 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
         navmesh: false as boolean,
         ocean: false as boolean,
         oceanNavmesh: false as boolean,
+        fullMesh: false as boolean,
     };
     let heightMapData: [number, number][] | null = null;
     let colorData: [number, [number, number, number]][] | null = null;
     const meshes: IGameMesh[] = [];
+    const spawnPoints: IGameSpawnPoint[] = [];
+    const buildings: IGameBuilding[] = [];
 
     const makeMesh = () => {
         const mesh = {
@@ -62,6 +76,9 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             voronoiTree.defaultRecursionNodeLevels = [30, 5, 5, 5];
             const points = new Map<[number, number, number], [[number, number, number], number]>();
             const colorMap = new Map<VoronoiCell, [number, number, number]>(colors);
+
+            // get nearest neighbor information
+            const nearestNeighbor = new NearestNeighbor(delaunay.vertices, delaunay.edges, delaunay.triangles);
 
             // build blank delaunay mesh quickly
             for (const lastPoint of delaunay.vertices) {
@@ -123,15 +140,21 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 };
             });
             delaunay.vertices.forEach(vertex => {
-                const height = (points.get(vertex) ?? [0, 1])[1];
+                const height = (points.get(vertex) ?? [0, 0.94])[1];
                 vertex[0] *= height;
                 vertex[1] *= height;
                 vertex[2] *= height;
             });
-            return vertices;
+            return {
+                vertices,
+                nearestNeighbor
+            };
         };
 
-        const remesh = remeshAsDelaunay();
+        const {
+            vertices: remesh,
+            nearestNeighbor: nearestNeighborData,
+        } = remeshAsDelaunay();
 
         let indexSet = [] as [number, number, number][];
         let indexVoronoiGame = new Game();
@@ -200,7 +223,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 // indices
                 planetGeometryData.index.push(startingIndex, startingIndex + 1, startingIndex + 2);
 
-                if (breakApart && startingIndex >= 8000 && !planetGeometryData.navmesh && !planetGeometryData.ocean && !planetGeometryData.oceanNavmesh) {
+                if (breakApart && startingIndex >= 8000 && !planetGeometryData.navmesh && !planetGeometryData.ocean && !planetGeometryData.oceanNavmesh && !planetGeometryData.fullMesh) {
                     meshes.push(makeMesh());
                 }
             }
@@ -245,6 +268,86 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             ocean.forEach(addToMesh);
             meshes.push(makeMesh());
             resetIndexSet();
+
+            // find the biggest shore
+            planetGeometryData.collidable = false;
+            planetGeometryData.navmesh = false;
+            planetGeometryData.ocean = false;
+            planetGeometryData.oceanNavmesh = false;
+            planetGeometryData.fullMesh = true;
+            let shore = remesh.map(v => v.vertex.some(vert => (DelaunayGraph.distanceFormula([0, 0, 0], vert) > 0.99 && DelaunayGraph.distanceFormula([0, 0, 0], vert) < 1.01)) ? v : null);
+            const shoreSets: Set<number>[] = [];
+            const shoreFullSet = new Map<any, number>(shore.map((v, i) => [v, i] as [any, number]).filter(x => !!x[0]));
+            while (shoreFullSet.size > 0) {
+                const shoreSet: Set<number> = new Set<number>();
+                const expandSet: Set<number> = new Set<number>();
+                do {
+                    const shoreSeedIndex = expandSet.size > 0 ? Array.from(expandSet.values())[0] : Array.from(shoreFullSet.values())[0];
+                    shoreSet.add(shoreSeedIndex);
+                    shoreFullSet.delete(shore[shoreSeedIndex]);
+                    expandSet.delete(shoreSeedIndex);
+                    const nearestNeighbors = nearestNeighborData.getNearestNeighborIndicesFromIndex(shoreSeedIndex);
+                    for (const index of nearestNeighbors) {
+                        // is null, do nothing
+                        if (!shore[index]) {
+                            continue;
+                        }
+                        // is added, do nothing
+                        if (!shoreFullSet.has(shore[index])) {
+                            continue;
+                        }
+
+                        // add shore set
+                        shoreSet.add(index);
+                        expandSet.add(index);
+                    }
+                } while (expandSet.size > 0);
+                shoreSets.push(shoreSet);
+            }
+            const largestShore = shoreSets.reduce((acc, s) => acc === null || (acc.size < s.size && s.size < 100) ? s : acc, null);
+            shore = shore.map((v, i) => largestShore.has(i) ? v : null);
+            shore.forEach(addToMesh);
+            meshes.push(makeMesh());
+            resetIndexSet();
+
+            // build port on shore
+            const bestTriangle = shore.filter(x =>
+                x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.99 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.01).length === 2 &&
+                x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.97 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 0.99).length === 1
+            ).reduce((acc, x) => {
+                if (acc === null) {
+                    return x;
+                }
+                const oldDistance = DelaunayGraph.distanceFormula(acc.vertex[0], acc.vertex[1]) + DelaunayGraph.distanceFormula(acc.vertex[1], acc.vertex[2]) + DelaunayGraph.distanceFormula(acc.vertex[2], acc.vertex[0]);
+                const newDistance = DelaunayGraph.distanceFormula(x.vertex[0], x.vertex[1]) + DelaunayGraph.distanceFormula(x.vertex[1], x.vertex[2]) + DelaunayGraph.distanceFormula(x.vertex[2], x.vertex[0]);
+                if (newDistance > oldDistance) {
+                    return x;
+                } else {
+                    return acc;
+                }
+            }, null);
+            if (bestTriangle) {
+                const inputToPortPoints = bestTriangle.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.99 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.01);
+                const portPoint = inputToPortPoints.reduce((acc, x) => DelaunayGraph.add(acc, DelaunayGraph.normalize(x)), [0, 0, 0]);
+                portPoint[0] /= inputToPortPoints.length;
+                portPoint[1] /= inputToPortPoints.length;
+                portPoint[2] /= inputToPortPoints.length;
+
+                const initialPortDirection = bestTriangle.vertex.find((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.97 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 0.99);
+                const portDirection = DelaunayGraph.normalize(initialPortDirection);
+                buildings.push({
+                    type: "PORT",
+                    point: portPoint,
+                    lookAt: portDirection,
+                });
+
+                // mark water as spawn point
+                const vectorDirection = DelaunayGraph.subtract(portDirection, portPoint);
+                const spawnPoint = DelaunayGraph.normalize(DelaunayGraph.add(portPoint, DelaunayGraph.add(vectorDirection, vectorDirection)));
+                spawnPoints.push({
+                    point: spawnPoint,
+                });
+            }
         } else {
             remesh.forEach(addToMesh);
             meshes.push(makeMesh());
@@ -697,7 +800,9 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
         meshes,
         voronoiTerrain: voronoiTree?.serializeTerrainPlanet(),
         colorData,
-        heightMapData
+        heightMapData,
+        buildings,
+        spawnPoints,
     };
 }
 
@@ -741,7 +846,7 @@ export const generatePlanet = (level: number, seed: string, breakApart: boolean)
                     z.voronoiCell
                 ], [] as VoronoiCell[])
             ], [] as VoronoiCell[])
-        ], [] as VoronoiCell[]);
+        ], [] as VoronoiCell[]);5
     }
 
     let combinedVoronoiCells3: VoronoiCell[] | undefined;
