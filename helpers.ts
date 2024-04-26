@@ -312,6 +312,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
 
             // build port on shore
             const bestTriangle = shore.filter(x =>
+                !!x &&
                 x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.99 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.01).length === 2 &&
                 x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.97 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 0.99).length === 1
             ).reduce((acc, x) => {
