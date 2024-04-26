@@ -304,7 +304,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 } while (expandSet.size > 0);
                 shoreSets.push(shoreSet);
             }
-            const largestShore = shoreSets.reduce((acc, s) => acc === null || (acc.size < s.size && s.size < 100) ? s : acc, null);
+            const largestShore = shoreSets.reduce((acc, s) => acc === null || (acc.size < s.size && s.size < 300) ? s : acc, null);
             shore = shore.map((v, i) => largestShore.has(i) ? v : null);
             // shore.forEach(addToMesh);
             // meshes.push(makeMesh());
@@ -314,7 +314,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             const bestTriangle = shore.filter(x =>
                 !!x &&
                 x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.99 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.01).length === 2 &&
-                x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.97 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 0.99).length === 1
+                x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.93 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 0.99).length === 1
             ).reduce((acc, x) => {
                 if (acc === null) {
                     return x;
