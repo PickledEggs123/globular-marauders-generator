@@ -891,7 +891,7 @@ export const generatePlanetSteps = (): IGameMesh[] => {
     return meshes;
 };
 
-export const generatePlanetGltf = async (data: IGameMesh, isOcean: boolean): Promise<Uint8Array> => {
+export const generatePlanetGltf = async (data: IGameMesh, isOcean: boolean, isNavMesh: boolean): Promise<Uint8Array> => {
     const doc = new GltfDocument();
     const scene = doc.createScene();
     const node = doc.createNode("planet");
@@ -934,6 +934,9 @@ export const generatePlanetGltf = async (data: IGameMesh, isOcean: boolean): Pro
     const material = doc.createMaterial().setDoubleSided(true);
     if (isOcean) {
         material.setBaseColorFactor([0.3, 0.3, 1.0, 0.8]).setAlphaMode("BLEND").setAlpha(0.8);
+    }
+    if (isNavMesh) {
+        material.setBaseColorFactor([0.0, 0.0, 0.0, 0.0]).setAlphaMode("BLEND").setAlpha(0.0);
     }
     primitive.setMaterial(material);
     const mesh = doc.createMesh("planet");

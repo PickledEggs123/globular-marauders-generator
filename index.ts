@@ -95,7 +95,7 @@ program.command("mesh-gltf")
     .action(async (type, destination) => {
         if (type === "planet") {
             const data = generatePlanet(2, new Date().toISOString(), false);
-            const json = await generatePlanetGltf(data.meshes[0], false);
+            const json = await generatePlanetGltf(data.meshes[0], false, false);
             await fs.promises.writeFile(destination, json);
         } else {
             throw new Error("Can only generate ['Planet'] mesh");
@@ -111,7 +111,7 @@ program.command("mesh-gltf-step")
         if (type === "planet") {
             const dataItems = generatePlanetSteps();
             for (const data of dataItems) {
-                const json = await generatePlanetGltf(data, false);
+                const json = await generatePlanetGltf(data, false, false);
                 const baseFileName = path.parse(destination).name;
                 const extName = path.extname(destination);
                 const fileName = baseFileName + dataItems.indexOf(data) + extName;
