@@ -132,7 +132,6 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
             // extract triangles
             const vertices = delaunay.triangles.map(t => {
                 const colorItem = points.get(delaunay.vertices[delaunay.edges[t[0]][0]]) ?? points.get(delaunay.vertices[delaunay.edges[t[1]][0]]) ?? points.get(delaunay.vertices[delaunay.edges[t[2]][0]]) ?? Array.from(points.values())[0]!;
-
                 return {
                     vertex: [delaunay.vertices[delaunay.edges[t[0]][0]], delaunay.vertices[delaunay.edges[t[1]][0]], delaunay.vertices[delaunay.edges[t[2]][0]]],
                     color: [(points.get(delaunay.vertices[delaunay.edges[t[0]][0]]) ?? colorItem)[0], (points.get(delaunay.vertices[delaunay.edges[t[1]][0]]) ?? colorItem)[0], (points.get(delaunay.vertices[delaunay.edges[t[2]][0]]) ?? colorItem)[0]],
@@ -144,6 +143,12 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 vertex[0] *= height;
                 vertex[1] *= height;
                 vertex[2] *= height;
+                const color = (points.get(vertex) ?? [[0, 1, 0], 1])[0];
+                if (height > 0.99 && height < 1.01 && color[2] === 1) {
+                    color[0] = 0.33;
+                    color[1] = 1;
+                    color[2] = 0.33;
+                }
             });
             return {
                 vertices,
@@ -304,50 +309,49 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 } while (expandSet.size > 0);
                 shoreSets.push(shoreSet);
             }
-            const largestShore = shoreSets.reduce((acc, s) => acc === null || (acc.size < s.size && s.size < 300) ? s : acc, null);
-            shore = shore.map((v, i) => largestShore.has(i) ? v : null);
-            // shore.forEach(addToMesh);
-            // meshes.push(makeMesh());
-            // resetIndexSet();
+            const largestShores = shoreSets.reduce((acc, s) => s.size < 300 ? [...acc, s] : acc, [] as Set<number>[]);
+            for (const largestShore of largestShores) {
+                const shore2 = shore.map((v, i) => largestShore.has(i) ? v : null);
 
-            // build port on shore
-            const bestTriangle = shore.filter(x =>
-                !!x &&
-                x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.99 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.01).length === 2 &&
-                x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.93 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 0.99).length === 1
-            ).reduce((acc, x) => {
-                if (acc === null) {
-                    return x;
+                // build port on shore
+                const bestTriangle = shore2.filter(x =>
+                    !!x &&
+                    x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.99 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.01).length === 2 &&
+                    x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.93 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 0.99).length === 1
+                ).reduce((acc, x) => {
+                    if (acc === null) {
+                        return x;
+                    }
+                    const oldDistance = DelaunayGraph.distanceFormula(acc.vertex[0], acc.vertex[1]) + DelaunayGraph.distanceFormula(acc.vertex[1], acc.vertex[2]) + DelaunayGraph.distanceFormula(acc.vertex[2], acc.vertex[0]);
+                    const newDistance = DelaunayGraph.distanceFormula(x.vertex[0], x.vertex[1]) + DelaunayGraph.distanceFormula(x.vertex[1], x.vertex[2]) + DelaunayGraph.distanceFormula(x.vertex[2], x.vertex[0]);
+                    if (newDistance > oldDistance) {
+                        return x;
+                    } else {
+                        return acc;
+                    }
+                }, null);
+                if (bestTriangle) {
+                    const inputToPortPoints = bestTriangle.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.99 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.01);
+                    const portPoint = inputToPortPoints.reduce((acc, x) => DelaunayGraph.add(acc, DelaunayGraph.normalize(x)), [0, 0, 0]);
+                    portPoint[0] /= inputToPortPoints.length;
+                    portPoint[1] /= inputToPortPoints.length;
+                    portPoint[2] /= inputToPortPoints.length;
+
+                    const initialPortDirection = bestTriangle.vertex.find((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.93 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 0.99);
+                    const portDirection = DelaunayGraph.normalize(initialPortDirection);
+                    buildings.push({
+                        type: "PORT",
+                        point: portPoint,
+                        lookAt: portDirection,
+                    });
+
+                    // mark water as spawn point
+                    const vectorDirection = DelaunayGraph.subtract(portDirection, portPoint);
+                    const spawnPoint = DelaunayGraph.normalize(DelaunayGraph.add(portPoint, vectorDirection));
+                    spawnPoints.push({
+                        point: spawnPoint,
+                    });
                 }
-                const oldDistance = DelaunayGraph.distanceFormula(acc.vertex[0], acc.vertex[1]) + DelaunayGraph.distanceFormula(acc.vertex[1], acc.vertex[2]) + DelaunayGraph.distanceFormula(acc.vertex[2], acc.vertex[0]);
-                const newDistance = DelaunayGraph.distanceFormula(x.vertex[0], x.vertex[1]) + DelaunayGraph.distanceFormula(x.vertex[1], x.vertex[2]) + DelaunayGraph.distanceFormula(x.vertex[2], x.vertex[0]);
-                if (newDistance > oldDistance) {
-                    return x;
-                } else {
-                    return acc;
-                }
-            }, null);
-            if (bestTriangle) {
-                const inputToPortPoints = bestTriangle.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.99 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.01);
-                const portPoint = inputToPortPoints.reduce((acc, x) => DelaunayGraph.add(acc, DelaunayGraph.normalize(x)), [0, 0, 0]);
-                portPoint[0] /= inputToPortPoints.length;
-                portPoint[1] /= inputToPortPoints.length;
-                portPoint[2] /= inputToPortPoints.length;
-
-                const initialPortDirection = bestTriangle.vertex.find((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.93 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 0.99);
-                const portDirection = DelaunayGraph.normalize(initialPortDirection);
-                buildings.push({
-                    type: "PORT",
-                    point: portPoint,
-                    lookAt: portDirection,
-                });
-
-                // mark water as spawn point
-                const vectorDirection = DelaunayGraph.subtract(portDirection, portPoint);
-                const spawnPoint = DelaunayGraph.normalize(DelaunayGraph.add(portPoint, DelaunayGraph.add(vectorDirection, vectorDirection)));
-                spawnPoints.push({
-                    point: spawnPoint,
-                });
             }
         } else {
             remesh.forEach(addToMesh);
