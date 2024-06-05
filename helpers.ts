@@ -405,8 +405,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                     housePoint[1] /= inputToHousePoints.length;
                     housePoint[2] /= inputToHousePoints.length;
 
-                    const initialHouseDirection = bestTriangle.vertex.find((x) => !!x);
-                    const houseDirection = initialHouseDirection;
+                    const houseDirection = bestTriangle.vertex.find((x) => !!x);
                     buildings.push({
                         type: "HOUSE",
                         point: housePoint,
