@@ -18,7 +18,7 @@ export interface IGameSpawnPoint {
 }
 
 export interface IGameBuilding {
-    type: "PORT";
+    type: "PORT" | "HOUSE";
     point: [number, number, number];
     lookAt: [number, number, number];
 }
@@ -309,8 +309,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 } while (expandSet.size > 0);
                 shoreSets.push(shoreSet);
             }
-            const largestShores = shoreSets.reduce((acc, s) => s.size < 300 ? [...acc, s] : acc, [] as Set<number>[]);
-            for (const largestShore of largestShores) {
+            for (const largestShore of shoreSets) {
                 const shore2 = shore.map((v, i) => largestShore.has(i) ? v : null);
 
                 // build port on shore
@@ -350,6 +349,65 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                     const spawnPoint = DelaunayGraph.normalize(DelaunayGraph.add(portPoint, vectorDirection));
                     spawnPoints.push({
                         point: spawnPoint,
+                    });
+                }
+            }
+
+            // find the biggest islands
+            let island = remesh.map(v => v.vertex.some(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) > 0.99) ? v : null);
+            const islandSets: Set<number>[] = [];
+            const islandFullSet = new Map<any, number>(island.map((v, i) => [v, i] as [any, number]).filter(x => !!x[0]));
+            while (islandFullSet.size > 0) {
+                const islandSet: Set<number> = new Set<number>();
+                const expandSet: Set<number> = new Set<number>();
+                do {
+                    const islandSeedIndex = expandSet.size > 0 ? Array.from(expandSet.values())[0] : Array.from(islandFullSet.values())[0];
+                    islandSet.add(islandSeedIndex);
+                    islandFullSet.delete(island[islandSeedIndex]);
+                    expandSet.delete(islandSeedIndex);
+                    const nearestNeighbors = nearestNeighborData.getNearestNeighborIndicesFromIndex(islandSeedIndex);
+                    for (const index of nearestNeighbors) {
+                        // is null, do nothing
+                        if (!island[index]) {
+                            continue;
+                        }
+                        // is added, do nothing
+                        if (!islandFullSet.has(island[index])) {
+                            continue;
+                        }
+
+                        // add island set
+                        islandSet.add(index);
+                        expandSet.add(index);
+                    }
+                } while (expandSet.size > 0);
+                islandSets.push(islandSet);
+            }
+            for (const largestIsland of islandSets) {
+                const island2 = island.map((v, i) => largestIsland.has(i) ? v : null);
+
+                // build port on island
+                const bestTriangles = island2.filter(x =>
+                    !!x &&
+                    x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.99 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.01).length === 3 ||
+                    x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.01 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.03).length === 3 ||
+                    x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.03 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.05).length === 3 ||
+                    x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.05 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.07).length === 3 ||
+                    x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.07 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.09).length === 3
+                );
+                for (const bestTriangle of bestTriangles.slice(0, 20)) {
+                    const inputToHousePoints = bestTriangle.vertex;
+                    const housePoint = inputToHousePoints.reduce((acc, x) => DelaunayGraph.add(acc, DelaunayGraph.normalize(x)), [0, 0, 0]);
+                    housePoint[0] /= inputToHousePoints.length;
+                    housePoint[1] /= inputToHousePoints.length;
+                    housePoint[2] /= inputToHousePoints.length;
+
+                    const initialHouseDirection = bestTriangle.vertex.find((x) => !!x);
+                    const houseDirection = DelaunayGraph.normalize(initialHouseDirection);
+                    buildings.push({
+                        type: "HOUSE",
+                        point: housePoint,
+                        lookAt: houseDirection,
                     });
                 }
             }
