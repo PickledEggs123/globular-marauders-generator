@@ -389,11 +389,14 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 // build port on island
                 const bestTriangles = island2.filter(x =>
                     !!x &&
-                    x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.99 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.01).length === 3 ||
-                    x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.01 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.03).length === 3 ||
-                    x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.03 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.05).length === 3 ||
-                    x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.05 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.07).length === 3 ||
-                    x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.07 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.09).length === 3
+                    (
+                        x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.99 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.01).length === 3 ||
+                        x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.01 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.03).length === 3 ||
+                        x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.03 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.05).length === 3 ||
+                        x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.05 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.07).length === 3 ||
+                        x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.07 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.09).length === 3 ||
+                        x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.09 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.11).length === 3
+                    )
                 );
                 for (const bestTriangle of bestTriangles.slice(0, 20)) {
                     const inputToHousePoints = bestTriangle.vertex;
