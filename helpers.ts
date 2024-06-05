@@ -400,13 +400,13 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                 );
                 for (const bestTriangle of bestTriangles.slice(0, Math.ceil(bestTriangles.length / 20))) {
                     const inputToHousePoints = bestTriangle.vertex;
-                    const housePoint = inputToHousePoints.reduce((acc, x) => DelaunayGraph.add(acc, DelaunayGraph.normalize(x)), [0, 0, 0]);
+                    const housePoint = inputToHousePoints.reduce((acc, x) => DelaunayGraph.add(acc, x), [0, 0, 0]);
                     housePoint[0] /= inputToHousePoints.length;
                     housePoint[1] /= inputToHousePoints.length;
                     housePoint[2] /= inputToHousePoints.length;
 
                     const initialHouseDirection = bestTriangle.vertex.find((x) => !!x);
-                    const houseDirection = DelaunayGraph.normalize(initialHouseDirection);
+                    const houseDirection = initialHouseDirection;
                     buildings.push({
                         type: "HOUSE",
                         point: housePoint,
