@@ -18,7 +18,7 @@ export interface IGameSpawnPoint {
 }
 
 export interface IGameBuilding {
-    type: "PORT" | "HOUSE";
+    type: "PORT" | "HOUSE" | "TEMPLE";
     point: [number, number, number];
     lookAt: [number, number, number];
 }
@@ -398,7 +398,34 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                         x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.09 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.11).length === 3
                     )
                 );
-                for (const bestTriangle of bestTriangles.slice(0, Math.ceil(bestTriangles.length / 20))) {
+                const houseSet = bestTriangles.slice(0, Math.ceil(bestTriangles.length / 20));
+                const getHeight = (x) => {
+                    let height = 0;
+                    if (x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.99 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.01).length === 3) {
+                        height = 0;
+                    }
+                    if (x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.01 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.03).length === 3) {
+                        height = 1;
+                    }
+                    if (x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.03 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.05).length === 3) {
+                        height = 2;
+                    }
+                    if (x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.05 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.07).length === 3) {
+                        height = 3;
+                    }
+                    if (x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.07 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.09).length === 3) {
+                        height = 4;
+                    }
+                    if (x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 1.09 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.11).length === 3) {
+                        height = 5;
+                    }
+                    return height;
+                };
+                const maxHeight = houseSet.reduce((acc, x) => {
+                    const height = getHeight(x);
+                    return Math.max(height, acc);
+                }, 0);
+                for (const bestTriangle of houseSet) {
                     const inputToHousePoints = bestTriangle.vertex;
                     const housePoint = inputToHousePoints.reduce((acc, x) => DelaunayGraph.add(acc, x), [0, 0, 0]);
                     housePoint[0] /= inputToHousePoints.length;
@@ -406,8 +433,10 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                     housePoint[2] /= inputToHousePoints.length;
 
                     const houseDirection = bestTriangle.vertex.find((x) => !!x);
+
+                    const type = game.seedRandom.double() * (getHeight(bestTriangle) / maxHeight) > 0.8 ? "TEMPLE" : "HOUSE";
                     buildings.push({
-                        type: "HOUSE",
+                        type,
                         point: housePoint,
                         lookAt: houseDirection,
                     });
