@@ -434,7 +434,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
 
                     const houseDirection = bestTriangle.vertex.find((x) => !!x);
 
-                    const type = game.seedRandom.double() * (getHeight(bestTriangle) / maxHeight) > 0.8 ? "TEMPLE" : "HOUSE";
+                    const type = game.seedRandom.double() * (getHeight(bestTriangle) / maxHeight) > 0.5 ? "TEMPLE" : "HOUSE";
                     buildings.push({
                         type,
                         point: housePoint,
