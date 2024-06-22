@@ -952,7 +952,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
     }
 
     return {
-        meshes: meshes.filter(m => m.attributes.find(x => x.id === "aPosition").buffer.length),
+        meshes: meshes.filter(m => m.index.length),
         voronoiTerrain: voronoiTree?.serializeTerrainPlanet(),
         colorData,
         heightMapData,
