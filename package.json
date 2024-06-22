@@ -1,6 +1,6 @@
 {
   "name": "@pickledeggs123/globular-marauders-generator",
-  "version": "0.1.67",
+  "version": "0.1.68",
   "description": "A command line tool used to generate meshes for the globular-marauders resume video game",
   "main": "dist/index.js",
   "scripts": {
