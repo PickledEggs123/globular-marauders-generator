@@ -54,7 +54,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
         return breakApart && startingIndex >= 8000 && !data.navmesh && !data.oceanNavmesh && !data.fullMesh;
     };
     const getCorrectData = (v: [number, number, number]) => {
-        const fullMesh = planetGeometryData.navmesh || planetGeometryData.oceanNavmesh || planetGeometryData.fullMesh;
+        const fullMesh = !breakApart && (planetGeometryData.navmesh || planetGeometryData.oceanNavmesh || planetGeometryData.fullMesh);
         return fullMesh ? planetGeometryData : terrainTileData.reduce((acc: any, item: any): any => {
             if (VoronoiGraph.angularDistance(item.vertex, v, 1) < VoronoiGraph.angularDistance(acc.vertex, v, 1)) {
                 return item;
