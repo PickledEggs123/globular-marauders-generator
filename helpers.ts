@@ -70,7 +70,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
 
     const makeMesh = (data: any) => {
         const mesh = {
-            attributes: data.navmesh || data.ocean || data.oceanNavmesh ? [{
+            attributes: data.navmesh || data.oceanNavmesh ? [{
                 id: "aPosition", buffer: data.position, size: 3
             }] : [{
                 id: "aPosition", buffer: data.position, size: 3
@@ -952,7 +952,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
     }
 
     return {
-        meshes: meshes.filter(m => m.position.length),
+        meshes: meshes.filter(m => m.attributes.find(x => x.id === "aPosition").buffer.length),
         voronoiTerrain: voronoiTree?.serializeTerrainPlanet(),
         colorData,
         heightMapData,
