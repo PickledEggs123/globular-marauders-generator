@@ -1085,7 +1085,7 @@ export const generatePlanetGltf = async (data: IGameMesh, isOcean: boolean, isNa
     if (normalAccessor) {
         primitive.setAttribute("NORMAL", normalAccessor);
     }
-    const material = doc.createMaterial().setDoubleSided(true);
+    const material = doc.createMaterial();
     if (isOcean) {
         material.setBaseColorFactor([0.3, 0.3, 1.0, 0.8]).setAlphaMode("BLEND").setAlpha(0.8);
     }
