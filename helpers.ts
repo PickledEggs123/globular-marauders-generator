@@ -72,6 +72,8 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
         const mesh = {
             attributes: data.navmesh || data.oceanNavmesh ? [{
                 id: "aPosition", buffer: data.position, size: 3
+            }, {
+                id: "aNormal", buffer: data.normal, size: 3
             }] : [{
                 id: "aPosition", buffer: data.position, size: 3
             }, {
@@ -216,6 +218,7 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
                         planetGeometryData.index.push(index);
                     } else {
                         planetGeometryData.position.push.apply(planetGeometryData.position, p);
+                        planetGeometryData.normal.push.apply(planetGeometryData.normal, DelaunayGraph.normalize(p));
                         planetGeometryData.index.push(indexSet.length);
                         indexSet.push(p);
                         const star = new Star(indexVoronoiGame);
