@@ -267,6 +267,62 @@ export const generatePlanetMesh = (game: Game, voronoiTree: VoronoiTerrain, plan
         };
 
         if (breakApart) {
+
+            // remove 1 pixel land bridges
+            let landBridges = remesh.map(v => v.vertex.filter(vert => (DelaunayGraph.distanceFormula([0, 0, 0], vert) > 0.99) && DelaunayGraph.distanceFormula([0, 0, 0], vert) < 1.01).length === 2 &&
+            v.vertex.filter(vert => (DelaunayGraph.distanceFormula([0, 0, 0], vert) < 0.99)).length === 1 ?
+                v : null);
+            const landBridgeSets: Set<number>[] = [];
+            const landBridgeFullSet = new Map<any, number>(landBridges.map((v, i) => [v, i] as [any, number]).filter(x => !!x[0]));
+            while (landBridgeFullSet.size > 0) {
+                const landBridgeSet: Set<number> = new Set<number>();
+                const expandSet: Set<number> = new Set<number>();
+                do {
+                    const landBridgeSeedIndex = expandSet.size > 0 ? Array.from(expandSet.values())[0] : Array.from(landBridgeFullSet.values())[0];
+                    landBridgeSet.add(landBridgeSeedIndex);
+                    landBridgeFullSet.delete(landBridges[landBridgeSeedIndex]);
+                    expandSet.delete(landBridgeSeedIndex);
+                    const nearestNeighbors = nearestNeighborData.getNearestNeighborIndicesFromIndex(landBridgeSeedIndex);
+                    for (const index of nearestNeighbors) {
+                        // is null, do nothing
+                        if (!landBridges[index]) {
+                            continue;
+                        }
+                        // is added, do nothing
+                        if (!landBridgeFullSet.has(landBridges[index])) {
+                            continue;
+                        }
+
+                        // add shore set
+                        landBridgeSet.add(index);
+                        expandSet.add(index);
+                    }
+                } while (expandSet.size > 0);
+                landBridgeSets.push(landBridgeSet);
+            }
+            for (const badLandBridges of landBridgeSets) {
+                const landBridges2 = landBridges.map((v, i) => badLandBridges.has(i) ? v : null);
+
+                // build port on shore
+                const badVertices = landBridges2.filter(x =>
+                    !!x &&
+                    x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.99 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.01).length === 2 &&
+                    x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.93 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 0.99).length === 1
+                ).reduce((acc, x) => {
+                    return [...acc, ...x.vertex.filter((x) => DelaunayGraph.distanceFormula([0, 0, 0], x) > 0.99 && DelaunayGraph.distanceFormula([0, 0, 0], x) < 1.01)];
+                }, []);
+                const uniqueBadVertices = new Set<[number, number, number]>(badVertices);
+                Array.from(uniqueBadVertices.values()).forEach((a) => {
+                    const vertexLength = DelaunayGraph.distanceFormula(a, [0, 0, 0]);
+                    a[0] /= vertexLength;
+                    a[1] /= vertexLength;
+                    a[2] /= vertexLength;
+                    a[0] *= 0.98;
+                    a[1] *= 0.98;
+                    a[2] *= 0.98;
+                });
+            }
+
             // handle water
             const water = remesh.map(v => v.vertex.some(vert => DelaunayGraph.distanceFormula([0, 0, 0], vert) < 0.99) ? v : null);
             water.forEach(addToMesh);

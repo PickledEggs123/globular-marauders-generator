@@ -1,5 +1,4 @@
 import {program} from "commander";
-import puppeteer from "puppeteer";
 import fs from "fs";
 import path from "path";
 import {generatePlanet, generatePlanetGltf, generatePlanetSteps} from "./helpers";
@@ -122,51 +121,51 @@ program.command("mesh-gltf-step")
         }
     });
 
-program.command("image")
-    .description("generate an image from a mesh")
-    .argument("type", "the type of data to render")
-    .argument("source", "the input file")
-    .action(async (type, source) => {
-        if (type === "planet") {
-            const data = JSON.parse(await fs.promises.readFile(source, {encoding: "utf8"}));
-
-            const browser = await puppeteer.launch({defaultViewport: {width: 256, height: 256}});
-            const page = await browser.newPage();
-            const pageContent = await fs.promises.readFile("./pixi/pixi-renderer.html", "utf8");
-            await page.setContent(pageContent);
-            await page.evaluate((data) => {
-                // @ts-ignore
-                loadPlanet(data);
-            }, data);
-            await new Promise<void>((resolve) => {
-                setTimeout(() => {
-                    resolve();
-                }, 1000);
-            });
-            await page.screenshot({ path: `${path.basename(source, path.extname(source))}.jpeg`, type: "jpeg" });
-            await browser.close();
-        } else if (type === "ship") {
-            const data = JSON.parse(await fs.promises.readFile(source, {encoding: "utf8"}));
-
-            const browser = await puppeteer.launch({defaultViewport: {width: 256, height: 256}});
-            const page = await browser.newPage();
-            const pageContent = await fs.promises.readFile("./pixi/pixi-renderer.html", "utf8");
-            await page.setContent(pageContent);
-            await page.evaluate((data) => {
-                // @ts-ignore
-                loadShip(data);
-            }, data);
-            await new Promise<void>((resolve) => {
-                setTimeout(() => {
-                    resolve();
-                }, 1000);
-            });
-            await page.screenshot({ path: `${path.basename(source, path.extname(source))}.jpeg`, type: "jpeg" });
-            await browser.close();
-        } else {
-            throw new Error("Can only render ['Planet'] image");
-        }
-    });
+// program.command("image")
+//     .description("generate an image from a mesh")
+//     .argument("type", "the type of data to render")
+//     .argument("source", "the input file")
+//     .action(async (type, source) => {
+//         if (type === "planet") {
+//             const data = JSON.parse(await fs.promises.readFile(source, {encoding: "utf8"}));
+//
+//             const browser = await puppeteer.launch({defaultViewport: {width: 256, height: 256}});
+//             const page = await browser.newPage();
+//             const pageContent = await fs.promises.readFile("./pixi/pixi-renderer.html", "utf8");
+//             await page.setContent(pageContent);
+//             await page.evaluate((data) => {
+//                 // @ts-ignore
+//                 loadPlanet(data);
+//             }, data);
+//             await new Promise<void>((resolve) => {
+//                 setTimeout(() => {
+//                     resolve();
+//                 }, 1000);
+//             });
+//             await page.screenshot({ path: `${path.basename(source, path.extname(source))}.jpeg`, type: "jpeg" });
+//             await browser.close();
+//         } else if (type === "ship") {
+//             const data = JSON.parse(await fs.promises.readFile(source, {encoding: "utf8"}));
+//
+//             const browser = await puppeteer.launch({defaultViewport: {width: 256, height: 256}});
+//             const page = await browser.newPage();
+//             const pageContent = await fs.promises.readFile("./pixi/pixi-renderer.html", "utf8");
+//             await page.setContent(pageContent);
+//             await page.evaluate((data) => {
+//                 // @ts-ignore
+//                 loadShip(data);
+//             }, data);
+//             await new Promise<void>((resolve) => {
+//                 setTimeout(() => {
+//                     resolve();
+//                 }, 1000);
+//             });
+//             await page.screenshot({ path: `${path.basename(source, path.extname(source))}.jpeg`, type: "jpeg" });
+//             await browser.close();
+//         } else {
+//             throw new Error("Can only render ['Planet'] image");
+//         }
+//     });
 
 program.command("embed")
     .description("embed an image into a mesh")
